@@ -14,6 +14,8 @@ All commands from repository root (use `gradlew.bat` on Windows):
 ./gradlew lintDebug                    # Lint checks
 ```
 
+After app changes the user should see on a phone/emulator, run **`installDebug`** (not only `assembleDebug`) when a device is connected—unless they say otherwise.
+
 ## Architecture
 
 Single-module Android app (`:app`) using Kotlin, Jetpack Compose, and Hilt DI.
@@ -37,11 +39,15 @@ Single-module Android app (`:app`) using Kotlin, Jetpack Compose, and Hilt DI.
 6. AI output parsed by `AiJsonParser` → `AiResultEntity` stored in Room
 7. Detail screen shows summary, extracted entities, tasks, reminders
 
-**AI routing logic** (`AiRouter`): SHORT text + local model available → LOCAL; LONG text or PDFs → OLLAMA (if configured); fallback → LOCAL.
+**AI routing logic** (`AiRouter`): LOCAL mode → local only; OLLAMA mode → remote only; AUTO (both) → Ollama first when URL + model are configured, else local when installed. `AiRepository` / assistant chat fall back to local when Ollama is unreachable in AUTO mode. Ollama model names come from `GET /api/tags` in Settings/onboarding (not typed).
 
 **Database:** Room `pocket_assistant.db` (schema v2). Entities: Item, AiResult, Task, Reminder, ChatThread, ChatMessage. Migration 1→2 adds chat tables.
 
 **Three downloadable local models** (configured in `ModelConfig.kt`): Qwen3 0.6B (~586MB), Qwen2.5 1.5B Instruct (~1.6GB), Gemma 3n E2B (~3GB, gated/requires HF token).
+
+**Current quality checks (Mar 2026):**
+- `testDebugUnitTest` passes in current workspace state.
+- `lintDebug` currently fails at `:app:lintAnalyzeDebug` due to Kotlin metadata mismatch from `app/libs/litertlm-android-0.8.0-classes.jar` (2.2.0 metadata vs 1.9.0 expected by project tooling).
 
 ## Conventions
 

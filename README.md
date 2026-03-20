@@ -52,6 +52,12 @@ From the repository root:
 
 Or open the folder in Android Studio, sync Gradle, and use **Run**.
 
+### Current build health (Mar 2026 snapshot)
+
+- `testDebugUnitTest`: passing
+- `lintDebug`: currently blocked by a Kotlin metadata mismatch in `app/libs/litertlm-android-0.8.0-classes.jar` (jar metadata 2.2.0 vs project Kotlin metadata expectation 1.9.0)
+- AGP emits a warning for `compileSdk 35` with AGP `8.3.2`; this is a warning and does not block `assemble`/unit tests
+
 ## Local models
 
 Model IDs, sizes, and Hugging Face–related settings are centralized in:

@@ -16,7 +16,11 @@ Run commands from the repository root:
 - `./gradlew installDebug`: install debug build on a connected device/emulator.
 - `./gradlew testDebugUnitTest`: run JVM unit tests in `app/src/test` (when present).
 - `./gradlew connectedDebugAndroidTest`: run instrumentation/UI tests in `app/src/androidTest` (device required).
+- `./gradlew installDebug` or `adb install -r app/build/outputs/apk/debug/app-debug.apk`: install the debug build on a connected device.
+- Gemma on-device check (requires Gemma 3n E2B already downloaded in app storage): `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.charles.pocketassistant.GemmaLocalModelEngineTest`
 - `./gradlew lintDebug`: run Android lint checks for the debug variant.
+
+When implementing fixes the user will verify on hardware, agents should run **`installDebug`** after substantive app changes (if a device is available), not stop at `assembleDebug` only.
 
 ## Coding Style & Naming Conventions
 Use Kotlin official style (`kotlin.code.style=official`) with 4-space indentation and idiomatic Kotlin patterns.
@@ -28,14 +32,14 @@ Use Kotlin official style (`kotlin.code.style=official`) with 4-space indentatio
 - Keep package boundaries aligned with feature areas (`ai`, `data`, `ui`) rather than creating cross-cutting utility dumps.
 
 ## Testing Guidelines
-Testing dependencies are configured (JUnit4, AndroidX test, Espresso, Compose UI test), but test source folders are currently absent.
+Testing dependencies are configured (JUnit4, AndroidX test, Espresso, Compose UI test), and test source folders are available.
 
 - Add unit tests under `app/src/test/...` with names like `ClassNameTest`.
 - Add instrumentation/Compose tests under `app/src/androidTest/...` with names like `FeatureNameInstrumentedTest`.
 - Prefer fast unit tests for parsing/routing/repository logic and instrumentation tests for end-to-end UI flows.
 
 ## Commit & Pull Request Guidelines
-Git metadata is not available in this workspace snapshot (`.git` is missing), so follow this baseline:
+Use scoped, focused commits and clear PR notes:
 
 - Commit messages: imperative and scoped, e.g., `feat(ai): add ollama connection retry`.
 - Keep commits focused; avoid mixing refactors with behavior changes.
