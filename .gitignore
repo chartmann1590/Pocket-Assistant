@@ -1,0 +1,48 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Android / local machine
+local.properties
+*.iml
+
+# IDE (Android Studio / IntelliJ)
+.idea/
+*.ipr
+*.iws
+out/
+
+# Keystores (never commit signing keys)
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Native / CMake
+.externalNativeBuild/
+.cxx/
+
+# Captures / profiling
+captures/
+
+# Log / temp
+*.log
+*.hprof
+
+# Optional local scratch (vendored experiments, large downloads)
+.tmp/
+tmp/
+
+# Exported / debug DataStore (do not commit)
+settings.preferences_pb
+
+# Root-level LiteRT download leftovers (shipped JNI/JAR live under app/)
+/classes.jar
+/litertlm-*.pom
+/litertlm-*.aar
+/litertlm-*.zip
+/litertlm-*.module
+/litertlm-metadata.xml
