@@ -38,7 +38,7 @@ object ModelConfig {
             displayName = "Qwen 2.5 1.5B Instruct",
             shortDescription = "Better answer quality than the lightweight option while still fitting comfortably on a phone.",
             remoteUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-            modelSizeMb = 1598,
+            modelSizeMb = 1524,
             requiredFreeSpaceMb = 2600,
             requiresAuthToken = false,
             repoUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct",
@@ -50,8 +50,8 @@ object ModelConfig {
             displayName = "Gemma 3n E2B",
             shortDescription = "Most capable on-device option here. Largest download and requires a Hugging Face token with Gemma access.",
             remoteUrl = "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm",
-            modelSizeMb = 2965,
-            requiredFreeSpaceMb = 4500,
+            modelSizeMb = 3487,
+            requiredFreeSpaceMb = 5500,
             requiresAuthToken = true,
             repoUrl = "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm",
             tokenHelpText = "Requires a Hugging Face token with Gemma gated-model access."
@@ -67,6 +67,15 @@ object ModelConfig {
     fun requiredFreeSpaceBytes(profile: LocalModelProfile): Long = profile.requiredFreeSpaceMb * 1024L * 1024L
 
     fun installActionLabel(profile: LocalModelProfile): String = "Download ${profile.tierLabel.lowercase()} model"
+
+    fun formatSize(profile: LocalModelProfile): String {
+        val mb = profile.modelSizeMb
+        return if (mb >= 1024) {
+            "%.1f GB".format(mb / 1024.0)
+        } else {
+            "$mb MB"
+        }
+    }
 
     fun installSummary(profile: LocalModelProfile): String = buildString {
         append(profile.tierLabel)

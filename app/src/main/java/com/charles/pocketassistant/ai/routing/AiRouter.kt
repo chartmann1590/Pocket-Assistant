@@ -7,15 +7,11 @@ data class RoutingDecision(
     val reason: String
 )
 
-class AiRouter(
-    private val localThresholdChars: Int = AiRoutingConfig.localTextThresholdChars
-) {
+class AiRouter {
     fun decide(
         selectedMode: AiMode,
-        textLength: Int,
         localAvailable: Boolean,
-        ollamaConfigured: Boolean,
-        sourceType: String = "text"
+        ollamaConfigured: Boolean
     ): RoutingDecision {
         return when (selectedMode) {
             AiMode.LOCAL -> {
@@ -24,13 +20,10 @@ class AiRouter(
             }
             AiMode.OLLAMA -> RoutingDecision(AiMode.OLLAMA, "Ollama only mode")
             AiMode.AUTO -> {
-                val heavySource = sourceType == "pdf"
-                if (!heavySource && textLength <= localThresholdChars && localAvailable) {
-                    RoutingDecision(AiMode.LOCAL, "Auto: local for short input")
-                } else if (ollamaConfigured) {
-                    RoutingDecision(AiMode.OLLAMA, "Auto: Ollama for heavy input")
-                } else {
-                    RoutingDecision(AiMode.LOCAL, "Auto fallback to local")
+                when {
+                    ollamaConfigured -> RoutingDecision(AiMode.OLLAMA, "Auto: try Ollama first")
+                    localAvailable -> RoutingDecision(AiMode.LOCAL, "Auto: local (Ollama not configured)")
+                    else -> RoutingDecision(AiMode.LOCAL, "Auto fallback to local")
                 }
             }
         }

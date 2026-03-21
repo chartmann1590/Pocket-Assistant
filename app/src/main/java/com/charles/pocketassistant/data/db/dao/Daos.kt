@@ -34,6 +34,9 @@ interface ItemDao {
 
     @Query("UPDATE items SET classification = :classification WHERE id = :id")
     suspend fun updateClassification(id: String, classification: String)
+
+    @Query("SELECT * FROM items WHERE rawText LIKE '%' || :query || '%' OR classification LIKE '%' || :query || '%' ORDER BY createdAt DESC")
+    fun search(query: String): Flow<List<ItemEntity>>
 }
 
 @Dao

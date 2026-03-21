@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
@@ -31,6 +30,9 @@ data class UserSettings(
     val localModelDownloadComplete: Boolean = false,
     val localModelDownloadInProgress: Boolean = false
 )
+
+fun UserSettings.isOllamaConfigured(): Boolean =
+    ollamaBaseUrl.trim().isNotBlank() && ollamaModelName.trim().isNotBlank()
 
 class SettingsStore(private val context: Context) {
     private object Keys {
@@ -74,9 +76,26 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun update(transform: (UserSettings) -> UserSettings) {
-        val current = settings.first()
-        val next = transform(current)
         context.dataStore.edit { prefs ->
+            val current = UserSettings(
+                onboardingComplete = prefs[Keys.onboardingComplete] ?: false,
+                aiMode = AiMode.valueOf(prefs[Keys.aiMode] ?: AiMode.LOCAL.name),
+                selectedLocalModelId = prefs[Keys.selectedLocalModelId] ?: com.charles.pocketassistant.ai.local.ModelConfig.defaultProfile.id,
+                localModelInstalled = prefs[Keys.localModelInstalled] ?: false,
+                localModelVersion = prefs[Keys.localModelVersion].orEmpty(),
+                localModelPath = prefs[Keys.localModelPath].orEmpty(),
+                localModelDownloadMessage = prefs[Keys.localModelDownloadMessage].orEmpty(),
+                modelDownloadAuthToken = prefs[Keys.modelDownloadAuthToken].orEmpty(),
+                ollamaBaseUrl = prefs[Keys.ollamaBaseUrl].orEmpty(),
+                ollamaApiToken = prefs[Keys.ollamaApiToken].orEmpty(),
+                ollamaModelName = prefs[Keys.ollamaModelName].orEmpty(),
+                allowMeteredDownload = prefs[Keys.allowMeteredDownload] ?: false,
+                allowSelfSignedCertificates = prefs[Keys.allowSelfSignedCertificates] ?: false,
+                showPromptDebug = prefs[Keys.showPromptDebug] ?: false,
+                localModelDownloadComplete = prefs[Keys.localModelDownloadComplete] ?: false,
+                localModelDownloadInProgress = prefs[Keys.localModelDownloadInProgress] ?: false
+            )
+            val next = transform(current)
             prefs[Keys.onboardingComplete] = next.onboardingComplete
             prefs[Keys.aiMode] = next.aiMode.name
             prefs[Keys.selectedLocalModelId] = next.selectedLocalModelId

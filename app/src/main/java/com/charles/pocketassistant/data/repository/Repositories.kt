@@ -5,6 +5,7 @@ import com.charles.pocketassistant.ai.local.LocalModelManager
 import com.charles.pocketassistant.ai.parser.AiJsonParser
 import com.charles.pocketassistant.ai.routing.AiRouter
 import com.charles.pocketassistant.data.datastore.AiMode
+import com.charles.pocketassistant.data.datastore.isOllamaConfigured
 import com.charles.pocketassistant.data.datastore.SettingsStore
 import com.charles.pocketassistant.data.db.dao.AiResultDao
 import com.charles.pocketassistant.data.db.dao.ChatMessageDao
@@ -30,6 +31,7 @@ class ItemRepository @Inject constructor(private val itemDao: ItemDao) {
     fun observeItems(): Flow<List<ItemEntity>> = itemDao.observeAll()
     fun observeById(id: String) = itemDao.observeById(id)
     fun observeByClassification(classification: String) = itemDao.observeByClassification(classification)
+    fun search(query: String): Flow<List<ItemEntity>> = itemDao.search(query)
     suspend fun getRecent(limit: Int = 25) = itemDao.getRecent(limit)
     suspend fun insert(item: ItemEntity) = itemDao.upsert(item)
     suspend fun updateClassification(id: String, classification: String) =
@@ -143,19 +145,44 @@ class AiRepository @Inject constructor(
     private val localLlmEngine: LocalLlmEngine,
     private val ollamaRepositoryImpl: OllamaRepositoryImpl,
     private val aiResultDao: AiResultDao,
-    private val parser: AiJsonParser
+    private val parser: AiJsonParser,
+    private val entityExtractionEngine: com.charles.pocketassistant.ml.EntityExtractionEngine
 ) {
     private val router = AiRouter()
 
     suspend fun run(itemId: String, text: String, sourceType: String = "text"): AiExtractionResult {
         val settings = settingsStore.settings.first()
+        val localAvailable = localLlmEngine.isAvailable()
+        val ollamaConfigured = settings.isOllamaConfigured()
         val decision = router.decide(
             selectedMode = settings.aiMode,
-            textLength = text.length,
-            localAvailable = localLlmEngine.isAvailable(),
-            ollamaConfigured = settings.ollamaBaseUrl.isNotBlank() && settings.ollamaModelName.isNotBlank(),
-            sourceType = sourceType
+            localAvailable = localAvailable,
+            ollamaConfigured = ollamaConfigured
         )
+        if (settings.aiMode == AiMode.AUTO && decision.mode == AiMode.OLLAMA && localAvailable) {
+            val ollamaResult = ollamaRepositoryImpl.summarizeAndExtract(text)
+            return ollamaResult.fold(
+                onSuccess = { result ->
+                    persistResult(
+                        itemId = itemId,
+                        modeUsed = "ollama",
+                        modelName = settings.ollamaModelName,
+                        result = result
+                    )
+                    result
+                },
+                onFailure = {
+                    val localResult = localLlmEngine.summarizeAndExtract(text)
+                    persistResult(
+                        itemId = itemId,
+                        modeUsed = "local",
+                        modelName = settings.localModelVersion,
+                        result = localResult
+                    )
+                    localResult
+                }
+            )
+        }
         return runWithMode(
             itemId = itemId,
             text = text,
@@ -171,12 +198,16 @@ class AiRepository @Inject constructor(
         sourceType: String = "text"
     ): AiExtractionResult {
         val settings = settingsStore.settings.first()
-        val result = when (mode) {
+        // Run ML Kit entity extraction in parallel (instant, ~50ms)
+        val mlEntities = entityExtractionEngine.extract(text)
+        val llmResult = when (mode) {
             AiMode.LOCAL -> localLlmEngine.summarizeAndExtract(text)
             AiMode.OLLAMA -> ollamaRepositoryImpl.summarizeAndExtract(text)
                 .getOrElse { parser.parseOrFallback(it.message ?: "Ollama request failed.") }
             AiMode.AUTO -> run(itemId, text, sourceType)
         }
+        // Backfill any entities the LLM missed with ML Kit's reliable extraction
+        val result = entityExtractionEngine.backfillEntities(llmResult, mlEntities)
         persistResult(
             itemId = itemId,
             modeUsed = mode.name.lowercase(),

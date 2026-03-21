@@ -37,18 +37,64 @@ class ReminderScheduler @Inject constructor(@ApplicationContext private val cont
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, remindAt, pending)
         }
     }
+
+    fun cancel(reminderId: String) {
+        val intent = Intent(context, ReminderReceiver::class.java)
+        val pending = PendingIntent.getBroadcast(
+            context,
+            reminderId.hashCode(),
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (pending != null) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarmManager.cancel(pending)
+        }
+    }
 }
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel("reminders", "Reminders", NotificationManager.IMPORTANCE_DEFAULT)
-        manager.createNotificationChannel(channel)
-        val notification = NotificationCompat.Builder(context, "reminders")
-            .setContentTitle("Pocket Assistant Reminder")
-            .setContentText(intent.getStringExtra("title") ?: "Task reminder")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+        // Ensure channels exist
+        val channels = listOf(
+            NotificationChannel("reminders", "Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+            },
+            NotificationChannel("bills", "Bill Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+            }
+        )
+        manager.createNotificationChannels(channels)
+
+        val title = intent.getStringExtra("title") ?: "Pocket Assistant Reminder"
+        val id = intent.getStringExtra("id") ?: "0"
+
+        // Determine channel based on content
+        val isBill = title.lowercase().let { it.contains("bill") || it.contains("due") || it.contains("payment") }
+        val channel = if (isBill) "bills" else "reminders"
+
+        // Create tap intent to open the app
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                context, id.hashCode(), it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        val notification = NotificationCompat.Builder(context, channel)
+            .setContentTitle(if (isBill) "Bill Due" else "Reminder")
+            .setContentText(title)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
-        manager.notify((intent.getStringExtra("id") ?: "0").hashCode(), notification)
+        manager.notify(id.hashCode(), notification)
     }
 }

@@ -27,6 +27,7 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.HttpURLConnection
 import java.net.SocketException
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -173,23 +174,31 @@ class ModelDownloadWorker @AssistedInject constructor(
         request: Request,
         profile: LocalModelProfile
     ) = try {
-        preferredDownloadClient()?.newCall(request)?.execute() ?: okHttpClient.newCall(request).execute()
+        preferredDownloadClient()?.newCall(request)?.execute() ?: downloadClient.newCall(request).execute()
     } catch (e: IOException) {
         if (isNetworkBindingPermissionError(e)) {
             Log.w(tag, "Network binding failed for ${profile.displayName}; retrying on default route.", e)
             val message = "VPN-controlled network detected. Retrying ${profile.displayName} on the default route..."
             localModelManager.setDownloadMessage(message)
             setProgress(workDataOf(KEY_PROGRESS to 0, KEY_MESSAGE to message))
-            okHttpClient.newCall(request).execute()
+            downloadClient.newCall(request).execute()
         } else {
             throw e
         }
     }
 
+    private val downloadClient: OkHttpClient by lazy {
+        okHttpClient.newBuilder()
+            .readTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .build()
+    }
+
     private fun preferredDownloadClient(): OkHttpClient? {
         val network = selectValidatedDownloadNetwork() ?: return null
         Log.d(tag, "Binding model download to ${describeNetwork(network)}")
-        return okHttpClient.newBuilder()
+        return downloadClient.newBuilder()
             .socketFactory(network.socketFactory)
             .dns(NetworkBoundDns(network))
             .build()
@@ -256,7 +265,15 @@ class ModelDownloadWorker @AssistedInject constructor(
     }
 
     private fun shouldRetry(message: String): Boolean {
-        return false
+        if (runAttemptCount >= MAX_RETRIES) return false
+        return message.contains("timed out", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("reset", ignoreCase = true) ||
+            message.contains("broken pipe", ignoreCase = true) ||
+            message.contains("connection abort", ignoreCase = true) ||
+            message.contains("unexpected end of stream", ignoreCase = true) ||
+            message.contains("EPERM", ignoreCase = true) ||
+            message.contains("failed to connect", ignoreCase = true)
     }
 
     private fun isNetworkBindingPermissionError(error: Throwable): Boolean {
@@ -315,6 +332,7 @@ class ModelDownloadWorker @AssistedInject constructor(
         const val KEY_PROGRESS = "progress"
         const val KEY_MESSAGE = "message"
         private const val PROGRESS_UPDATE_INTERVAL_MS = 1_000L
+        private const val MAX_RETRIES = 3
     }
 }
 

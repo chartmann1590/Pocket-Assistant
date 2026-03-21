@@ -2,6 +2,7 @@ package com.charles.pocketassistant.ui
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,6 +13,7 @@ import com.charles.pocketassistant.ai.local.ModelConfig
 import com.charles.pocketassistant.ai.local.LocalModelProfile
 import com.charles.pocketassistant.ai.routing.AiRouter
 import com.charles.pocketassistant.data.datastore.AiMode
+import com.charles.pocketassistant.data.datastore.isOllamaConfigured
 import com.charles.pocketassistant.data.db.entity.ChatMessageEntity
 import com.charles.pocketassistant.data.db.entity.ItemEntity
 import com.charles.pocketassistant.data.db.entity.ReminderEntity
@@ -31,13 +33,6 @@ import com.charles.pocketassistant.ocr.OcrEngine
 import com.charles.pocketassistant.util.AssistantDateTimeParser
 import com.charles.pocketassistant.util.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
@@ -78,6 +73,8 @@ data class OnboardingUiState(
     val ollamaBaseUrl: String = "",
     val ollamaApiToken: String = "",
     val ollamaModelName: String = "",
+    val ollamaRemoteModels: List<String> = emptyList(),
+    val ollamaModelsLoading: Boolean = false,
     val ollamaTestMessage: String = "",
     val dataToolsMessage: String = "",
     val canFinish: Boolean = false
@@ -119,6 +116,10 @@ class OnboardingViewModel @Inject constructor(
     private val _state = MutableStateFlow(OnboardingUiState())
     val state: StateFlow<OnboardingUiState> = _state
 
+    // Must be declared before init — init calls observeSettings() which combines these flows.
+    private val ollamaRemoteModelsState = MutableStateFlow<List<String>>(emptyList())
+    private val ollamaModelsLoadingState = MutableStateFlow(false)
+
     init {
         observeSettings()
         observeDownloadState()
@@ -126,9 +127,15 @@ class OnboardingViewModel @Inject constructor(
 
     private fun observeSettings() {
         viewModelScope.launch {
-            settingsRepository.settings.collect { s ->
+            combine(
+                settingsRepository.settings,
+                ollamaRemoteModelsState,
+                ollamaModelsLoadingState
+            ) { s, remoteModels, modelsLoading ->
+                Triple(s, remoteModels, modelsLoading)
+            }.collect { (s, remoteModels, modelsLoading) ->
                 val localInstalled = s.localModelInstalled && localModelManager.isModelInstalled()
-                val ollamaConfigured = s.ollamaBaseUrl.isNotBlank() && s.ollamaModelName.isNotBlank()
+                val ollamaConfigured = s.isOllamaConfigured()
                 val selectedProfile = ModelConfig.profileFor(s.selectedLocalModelId)
                 val selectedMode = when (s.aiMode) {
                     AiMode.LOCAL -> OnboardingModeSelection.LOCAL
@@ -157,6 +164,8 @@ class OnboardingViewModel @Inject constructor(
                     ollamaBaseUrl = s.ollamaBaseUrl,
                     ollamaApiToken = s.ollamaApiToken,
                     ollamaModelName = s.ollamaModelName,
+                    ollamaRemoteModels = remoteModels,
+                    ollamaModelsLoading = modelsLoading,
                     dataToolsMessage = _state.value.dataToolsMessage,
                     canFinish = when (selectedMode) {
                         OnboardingModeSelection.LOCAL -> localInstalled
@@ -231,14 +240,46 @@ class OnboardingViewModel @Inject constructor(
         settingsRepository.update { it.copy(modelDownloadAuthToken = v.trim()) }
     }
 
-    fun testOllama() = viewModelScope.launch {
+    fun refreshOllamaModels() = viewModelScope.launch {
+        val s = settingsRepository.settings.first()
+        if (s.ollamaBaseUrl.isBlank()) {
+            ollamaRemoteModelsState.value = emptyList()
+            return@launch
+        }
+        ollamaModelsLoadingState.value = true
         val result = ollamaRepositoryImpl.testConnection()
-        _state.value = _state.value.copy(
-            ollamaTestMessage = result.fold(
-                onSuccess = { "Connected. Models: ${it.take(5).joinToString()}" },
-                onFailure = { "Connection failed: ${it.message}" }
+        ollamaModelsLoadingState.value = false
+        if (result.isSuccess) {
+            val models = result.getOrNull().orEmpty()
+            ollamaRemoteModelsState.value = models
+            ollamaRepositoryImpl.applyDefaultOllamaModelIfNeeded(models)
+        } else {
+            ollamaRemoteModelsState.value = emptyList()
+        }
+    }
+
+    fun testOllama() = viewModelScope.launch {
+        val s = settingsRepository.settings.first()
+        if (s.ollamaBaseUrl.isBlank()) {
+            _state.value = _state.value.copy(ollamaTestMessage = "Enter a base URL first.")
+            return@launch
+        }
+        ollamaModelsLoadingState.value = true
+        val result = ollamaRepositoryImpl.testConnection()
+        ollamaModelsLoadingState.value = false
+        if (result.isSuccess) {
+            val models = result.getOrNull().orEmpty()
+            ollamaRemoteModelsState.value = models
+            ollamaRepositoryImpl.applyDefaultOllamaModelIfNeeded(models)
+            _state.value = _state.value.copy(
+                ollamaTestMessage = "Connected. Found ${models.size} model(s)."
             )
-        )
+        } else {
+            ollamaRemoteModelsState.value = emptyList()
+            _state.value = _state.value.copy(
+                ollamaTestMessage = "Connection failed: ${result.exceptionOrNull()?.message}"
+            )
+        }
     }
 
     fun downloadModel() {
@@ -272,7 +313,7 @@ class OnboardingViewModel @Inject constructor(
 
     fun setupLocalLater() = viewModelScope.launch {
         settingsRepository.update {
-            if (it.ollamaBaseUrl.isNotBlank() && it.ollamaModelName.isNotBlank()) {
+            if (it.isOllamaConfigured()) {
                 it.copy(onboardingComplete = true, aiMode = AiMode.OLLAMA)
             } else {
                 it
@@ -285,7 +326,8 @@ class OnboardingViewModel @Inject constructor(
 class ImportViewModel @Inject constructor(
     private val itemRepository: ItemRepository,
     private val aiRepository: AiRepository,
-    private val ocrEngine: OcrEngine
+    private val ocrEngine: OcrEngine,
+    private val notificationHelper: com.charles.pocketassistant.util.NotificationHelper
 ) : ViewModel() {
     val items = itemRepository.observeItems().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val _processing = MutableStateFlow(ProcessingUiState())
@@ -368,6 +410,7 @@ class ImportViewModel @Inject constructor(
             message = "",
             currentItemId = id
         )
+        notificationHelper.showAiComplete(id, result.summary.ifBlank { "Analysis complete" })
         if (navigateOnComplete) {
             _completedItemId.value = id
         }
@@ -395,9 +438,54 @@ class ImportViewModel @Inject constructor(
 }
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(itemRepository: ItemRepository) : ViewModel() {
+class HomeViewModel @Inject constructor(
+    private val itemRepository: ItemRepository,
+    private val aiRepository: AiRepository
+) : ViewModel() {
     val items = itemRepository.observeItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _summaries = MutableStateFlow<Map<String, String>>(emptyMap())
+    val summaries: StateFlow<Map<String, String>> = _summaries
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    private val _searchResults = MutableStateFlow<List<ItemEntity>?>(null)
+    val searchResults: StateFlow<List<ItemEntity>?> = _searchResults
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+        if (query.isBlank()) {
+            _searchResults.value = null
+        } else {
+            viewModelScope.launch {
+                itemRepository.search(query).collect { results ->
+                    _searchResults.value = results
+                }
+            }
+        }
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+        _searchResults.value = null
+    }
+
+    init {
+        viewModelScope.launch {
+            items.collect { _ ->
+                val results = aiRepository.getRecentResults(200)
+                val map = mutableMapOf<String, String>()
+                for (r in results) {
+                    if (r.itemId !in map && r.summary.isNotBlank() && !r.summary.trimStart().startsWith("{")) {
+                        map[r.itemId] = r.summary
+                    }
+                }
+                _summaries.value = map
+            }
+        }
+    }
 }
 
 data class AssistantMessage(
@@ -464,6 +552,11 @@ class AssistantViewModel @Inject constructor(
     private val ollamaRepositoryImpl: OllamaRepositoryImpl,
     private val reminderScheduler: ReminderScheduler
 ) : ViewModel() {
+    private companion object {
+        // ~6000 chars ≈ ~1500 tokens, leaving room for prompt template + question + response
+        const val LOCAL_CONTEXT_CHAR_LIMIT = 6000
+    }
+
     private val _state = MutableStateFlow(AssistantUiState())
     val state: StateFlow<AssistantUiState> = _state
     private val router = AiRouter()
@@ -494,6 +587,9 @@ class AssistantViewModel @Inject constructor(
         activeThreadMessagesJob?.cancel()
         _state.value = _state.value.copy(
             currentThreadId = threadId,
+            currentThreadTitle = "New chat",
+            messages = listOf(introMessage()),
+            input = "",
             running = false,
             runningLabel = "",
             error = ""
@@ -531,8 +627,7 @@ class AssistantViewModel @Inject constructor(
                 messages = stripIntroMessages(_state.value.messages) + optimisticUserMessage,
                 running = true,
                 error = "",
-                input = "",
-                runningLabel = "Checking your saved data..."
+                input = ""
             )
             chatRepository.saveMessage(
                 threadId = threadId,
@@ -540,61 +635,41 @@ class AssistantViewModel @Inject constructor(
                 text = question,
                 createdAt = userCreatedAt
             )
-            val recentItems = itemRepository.getRecent(20)
+            val recentItems = itemRepository.getRecent(50)
             val threadHistory = chatRepository.getRecentMessages(threadId, 8)
-            val directResponse = answerFromStoredData(question, recentItems)
-            if (directResponse != null) {
-                val directReferences = resolveAssistantReferences(
-                    responseReferences = directResponse.references,
-                    question = question,
-                    reply = directResponse.reply,
-                    recentItems = recentItems
-                )
-                val optimisticAssistantMessage = AssistantMessage(
-                    id = "local-assistant-${System.currentTimeMillis()}",
-                    role = "assistant",
-                    text = directResponse.reply.ifBlank { "I did not find a direct answer in your saved data." },
-                    createdAt = System.currentTimeMillis(),
-                    references = directReferences
-                )
-                _state.value = _state.value.copy(
-                    messages = stripIntroMessages(_state.value.messages) + optimisticAssistantMessage,
-                    running = false,
-                    runningLabel = ""
-                )
-                chatRepository.saveMessage(
-                    threadId = threadId,
-                    role = "assistant",
-                    text = optimisticAssistantMessage.text,
-                    createdAt = optimisticAssistantMessage.createdAt,
-                    referencesJson = serializeReferences(directReferences)
-                )
-                return@launch
-            }
-            val context = buildContext(recentItems, threadHistory)
+            val fullContext = buildContext(recentItems, threadHistory, question)
             val settings = settingsRepository.settings.first()
+            val localAvailable = localLlmEngine.isAvailable()
+            val ollamaConfigured = settings.isOllamaConfigured()
             val decision = router.decide(
                 selectedMode = settings.aiMode,
-                textLength = question.length + context.length,
-                localAvailable = localLlmEngine.isAvailable(),
-                ollamaConfigured = settings.ollamaBaseUrl.isNotBlank() && settings.ollamaModelName.isNotBlank(),
-                sourceType = "assistant"
+                localAvailable = localAvailable,
+                ollamaConfigured = ollamaConfigured
             )
+            android.util.Log.d("AssistantVM", "Routing: mode=${settings.aiMode} local=$localAvailable ollamaConfigured=$ollamaConfigured → ${decision.mode} (${decision.reason})")
+            // Local models have small context windows (~4K tokens); cap context to fit.
+            val context = if (decision.mode == AiMode.LOCAL) fullContext.take(LOCAL_CONTEXT_CHAR_LIMIT) else fullContext
+            val localContext = fullContext.take(LOCAL_CONTEXT_CHAR_LIMIT)
             _state.value = _state.value.copy(
-                runningLabel = when (decision.mode) {
-                    AiMode.LOCAL -> "Assistant is thinking with local AI..."
-                    AiMode.OLLAMA -> "Assistant is thinking with Ollama..."
-                    AiMode.AUTO -> "Assistant is deciding how to answer..."
+                runningLabel = when {
+                    decision.mode == AiMode.LOCAL -> "Assistant is thinking with local AI..."
+                    decision.mode == AiMode.OLLAMA -> "Assistant is thinking with Ollama..."
+                    else -> "Assistant is thinking..."
                 }
             )
             val shouldAllowActions = shouldAllowActionSuggestions(question)
+            val ollamaAvailable = ollamaConfigured
             val response = when (decision.mode) {
-                AiMode.LOCAL -> localLlmEngine.answerQuestionStructured(question, context, shouldAllowActions)
-                AiMode.OLLAMA -> ollamaRepositoryImpl.answerQuestionStructured(question, context, shouldAllowActions)
-                    .getOrElse { AssistantChatResult(reply = "Ollama request failed: ${it.message.orEmpty()}") }
-                AiMode.AUTO -> AssistantChatResult(reply = "Assistant routing did not resolve a concrete mode.")
+                AiMode.LOCAL -> tryLocalWithOllamaFallback(question, context, fullContext, shouldAllowActions, ollamaAvailable)
+                AiMode.OLLAMA -> when {
+                    settings.aiMode == AiMode.AUTO && localAvailable ->
+                        tryOllamaWithLocalFallback(question, context, localContext, shouldAllowActions)
+                    else -> ollamaRepositoryImpl.answerQuestionStructured(question, context, shouldAllowActions)
+                        .getOrElse { AssistantChatResult(reply = "Ollama request failed: ${it.message.orEmpty()}") }
+                }
+                else -> tryLocalWithOllamaFallback(question, context, fullContext, shouldAllowActions, ollamaAvailable)
             }
-            val assistantActions = response.actions.mapNotNull { suggestion ->
+            var assistantActions = response.actions.mapNotNull { suggestion ->
                 if (!shouldAllowActions) {
                     null
                 } else {
@@ -614,6 +689,22 @@ class AssistantViewModel @Inject constructor(
                     )
                 }
             }
+            // If the user explicitly asked to create something but the model didn't
+            // return actions (common with small local models), extract an action from
+            // the question and the model's reply.
+            if (shouldAllowActions && assistantActions.isEmpty()) {
+                val fallbackAction = extractFallbackAction(question, response.reply)
+                if (fallbackAction != null) {
+                    assistantActions = listOf(fallbackAction)
+                }
+            }
+            // Auto-execute actions when the user explicitly asked to create/add something.
+            var replyText = response.reply.ifBlank { "I did not have a usable answer." }
+            if (shouldAllowActions && assistantActions.isNotEmpty()) {
+                val executed = autoExecuteActions(assistantActions)
+                assistantActions = executed
+                replyText = buildAutoExecuteReply(executed)
+            }
             val assistantReferences = resolveAssistantReferences(
                 responseReferences = response.references,
                 question = question,
@@ -623,7 +714,7 @@ class AssistantViewModel @Inject constructor(
             val optimisticAssistantMessage = AssistantMessage(
                 id = "local-assistant-${System.currentTimeMillis()}",
                 role = "assistant",
-                text = response.reply.ifBlank { "I did not have a usable answer." },
+                text = replyText,
                 createdAt = System.currentTimeMillis(),
                 actions = assistantActions,
                 references = assistantReferences
@@ -644,6 +735,60 @@ class AssistantViewModel @Inject constructor(
         }
     }
 
+    private fun isLocalModelFailure(reply: String): Boolean =
+        reply.startsWith("Local model failed") ||
+            reply.startsWith("Local model is not installed") ||
+            reply == "The local model did not return a response."
+
+    private fun isLowQualityResponse(result: AssistantChatResult): Boolean {
+        val reply = result.reply.trim()
+        if (isLocalModelFailure(reply)) return true
+        // Too short to be useful (likely garbled)
+        if (reply.length < 15) return true
+        // Looks like raw JSON leaked through instead of a real reply
+        if (reply.startsWith("{") || reply.startsWith("```")) return true
+        // Generic fallback text from parser
+        if (reply.contains("broken format") || reply.contains("could not parse")) return true
+        return false
+    }
+
+    private suspend fun tryLocalWithOllamaFallback(
+        question: String,
+        localContext: String,
+        fullContext: String,
+        allowActions: Boolean,
+        ollamaAvailable: Boolean
+    ): AssistantChatResult {
+        // LocalLlmEngine now retries internally with a simpler prompt variant
+        val localResult = localLlmEngine.answerQuestionStructured(question, localContext, allowActions)
+        if (isLocalModelFailure(localResult.reply) && ollamaAvailable) {
+            _state.value = _state.value.copy(runningLabel = "Local model unavailable, falling back to Ollama...")
+            return ollamaRepositoryImpl.answerQuestionStructured(question, fullContext, allowActions)
+                .getOrElse { AssistantChatResult(reply = "Local model unavailable and Ollama fallback also failed: ${it.message.orEmpty()}") }
+        }
+        // If still low quality after engine's internal retry, try Ollama as last resort
+        if (isLowQualityResponse(localResult) && ollamaAvailable) {
+            Log.d("AssistantVM", "Low quality after local retries, trying Ollama...")
+            _state.value = _state.value.copy(runningLabel = "Trying Ollama for a better answer...")
+            return ollamaRepositoryImpl.answerQuestionStructured(question, fullContext, allowActions)
+                .getOrElse { localResult }
+        }
+        return localResult
+    }
+
+    private suspend fun tryOllamaWithLocalFallback(
+        question: String,
+        ollamaContext: String,
+        localContext: String,
+        allowActions: Boolean
+    ): AssistantChatResult {
+        val ollamaResult = ollamaRepositoryImpl.answerQuestionStructured(question, ollamaContext, allowActions)
+        return ollamaResult.getOrElse {
+            _state.value = _state.value.copy(runningLabel = "Using local model (Ollama didn’t respond)…")
+            localLlmEngine.answerQuestionStructured(question, localContext, allowActions)
+        }
+    }
+
     fun confirmAssistantAction(messageId: String, actionId: String) {
         val action = _state.value.messages
             .firstOrNull { it.id == messageId }
@@ -654,17 +799,38 @@ class AssistantViewModel @Inject constructor(
         updateAction(messageId, actionId) { it.copy(status = AssistantActionStatus.APPLYING, feedback = "") }
         viewModelScope.launch {
             val updated = runCatching {
+                val itemId = UUID.randomUUID().toString()
+                val now = System.currentTimeMillis()
+                // Create a visible item on the home screen
+                itemRepository.insert(
+                    ItemEntity(
+                        id = itemId,
+                        type = "assistant",
+                        sourceApp = null,
+                        localUri = null,
+                        thumbnailUri = null,
+                        rawText = buildItemRawText(action),
+                        createdAt = now,
+                        classification = classificationForAction(action)
+                    )
+                )
+                aiRepository.saveEditedResult(
+                    itemId = itemId,
+                    rawOutput = "{}",
+                    fallbackSummary = buildItemSummary(action),
+                    modelName = "assistant"
+                )
                 when (action.type) {
                     "create_task" -> {
                         taskRepository.addTask(
                             TaskEntity(
                                 id = UUID.randomUUID().toString(),
-                                itemId = null,
+                                itemId = itemId,
                                 title = action.title,
                                 details = action.details.ifBlank { null },
                                 dueAt = action.scheduledForMillis,
                                 isDone = false,
-                                createdAt = System.currentTimeMillis()
+                                createdAt = now
                             )
                         )
                         action.copy(
@@ -679,10 +845,10 @@ class AssistantViewModel @Inject constructor(
                         taskRepository.addReminder(
                             ReminderEntity(
                                 id = reminderId,
-                                itemId = null,
+                                itemId = itemId,
                                 title = action.title,
                                 remindAt = remindAt,
-                                createdAt = System.currentTimeMillis()
+                                createdAt = now
                             )
                         )
                         reminderScheduler.schedule(reminderId, action.title, remindAt)
@@ -715,62 +881,135 @@ class AssistantViewModel @Inject constructor(
         viewModelScope.launch { persistMessageState(messageId) }
     }
 
-    private suspend fun buildContext(items: List<ItemEntity>, threadMessages: List<ChatMessageEntity>): String {
-        val tasks = taskRepository.getOpen(20)
+    private suspend fun buildContext(
+        items: List<ItemEntity>,
+        threadMessages: List<ChatMessageEntity>,
+        question: String = ""
+    ): String {
+        val tasks = taskRepository.getOpen(50)
         val reminders = taskRepository.getUpcomingReminders()
-        val aiResults = aiRepository.getRecentResults(10)
+        val aiResults = aiRepository.getRecentResults(200)
+        // Latest result per item
+        val aiResultsByItemId = mutableMapOf<String, com.charles.pocketassistant.data.db.entity.AiResultEntity>()
+        for (r in aiResults) {
+            if (r.itemId !in aiResultsByItemId) aiResultsByItemId[r.itemId] = r
+        }
+
+        // Score items by relevance to the question
+        val questionWords = question.lowercase().split(Regex("\\W+")).filter { it.length >= 3 }.toSet()
+        data class ScoredItem(
+            val item: ItemEntity,
+            val result: com.charles.pocketassistant.data.db.entity.AiResultEntity?,
+            val score: Int
+        )
+        val scoredItems = items.map { item ->
+            val result = aiResultsByItemId[item.id]
+            val searchable = buildString {
+                append(item.rawText.lowercase())
+                append(" ")
+                append(item.classification.orEmpty().lowercase())
+                append(" ")
+                append(result?.summary.orEmpty().lowercase())
+            }
+            val score = questionWords.count { searchable.contains(it) }
+            ScoredItem(item, result, score)
+        }.sortedByDescending { it.score }
+
+        // ── Budget-based context builder ────────────────────────────────
+        // Each section has a character budget. Never truncate mid-item.
+        val budgetHistory = 1000
+        val budgetItems = 3200
+        val budgetTasks = 800
+        val budgetReminders = 500
+
         return buildString {
+            // Thread history (compact)
             if (threadMessages.isNotEmpty()) {
-                appendLine("Recent conversation in this thread:")
-                threadMessages.takeLast(8).forEachIndexed { index, message ->
-                    append(index + 1)
-                    append(". ")
-                    append(message.role)
-                    append(": ")
-                    appendLine(message.text.take(180))
+                var used = 0
+                appendLine("Chat history:")
+                for (msg in threadMessages.takeLast(4)) {
+                    val line = "${msg.role}: ${msg.text.take(250).replace('\n', ' ')}"
+                    if (used + line.length > budgetHistory) break
+                    appendLine(line)
+                    used += line.length
                 }
                 appendLine()
             }
-            appendLine("Recent items:")
-            items.forEachIndexed { index, item ->
-                append(index + 1)
-                append(". itemId=")
-                append(item.id)
-                append(" classification=")
-                append(item.classification ?: item.type)
-                append(" summary=\"")
-                append(item.rawText.take(220).replace("\"", "'"))
-                appendLine("\"")
+
+            // Items — compact format: #id [class] summary or rawText
+            appendLine("Items:")
+            var itemsUsed = 0
+            val maxNonRelevant = 5
+            var nonRelevantCount = 0
+            for (scored in scoredItems) {
+                val isRelevant = scored.score > 0
+                if (!isRelevant) {
+                    nonRelevantCount++
+                    if (nonRelevantCount > maxNonRelevant) continue
+                }
+                val summary = scored.result?.summary
+                    ?.takeIf { !it.trimStart().startsWith("{") && it.isNotBlank() }
+                val line = buildString {
+                    append("#")
+                    append(scored.item.id)
+                    append(" [")
+                    append(scored.item.classification ?: "unknown")
+                    append("] ")
+                    if (isRelevant) {
+                        // Relevant items: summary + key raw text details
+                        if (summary != null) {
+                            append(summary.take(200))
+                        }
+                        // Add raw text for relevant items (may contain details summary missed)
+                        val rawSnippet = scored.item.rawText.take(400).replace('\n', ' ').replace("  ", " ")
+                        append(" | ")
+                        append(rawSnippet)
+                    } else {
+                        // Non-relevant: just the summary, very compact
+                        append(summary?.take(120) ?: scored.item.rawText.take(80).replace('\n', ' '))
+                    }
+                }
+                if (itemsUsed + line.length > budgetItems) break
+                appendLine(line)
+                itemsUsed += line.length
             }
             appendLine()
-            appendLine("Open tasks:")
-            tasks.forEachIndexed { index, task ->
-                append(index + 1)
-                append(". ")
-                append(task.title)
-                if (!task.details.isNullOrBlank()) {
-                    append(" - ")
-                    append(task.details)
+
+            // Tasks (compact)
+            if (tasks.isNotEmpty()) {
+                appendLine("Tasks:")
+                var tasksUsed = 0
+                for (task in tasks) {
+                    val line = buildString {
+                        append("- ")
+                        append(task.title)
+                        if (!task.details.isNullOrBlank()) {
+                            append(": ")
+                            append(task.details.take(80))
+                        }
+                        if (task.dueAt != null) {
+                            append(" (due ")
+                            append(AssistantDateTimeParser.formatForDisplay(task.dueAt))
+                            append(")")
+                        }
+                    }
+                    if (tasksUsed + line.length > budgetTasks) break
+                    appendLine(line)
+                    tasksUsed += line.length
                 }
                 appendLine()
             }
-            appendLine()
-            appendLine("Upcoming reminders:")
-            reminders.forEachIndexed { index, reminder ->
-                append(index + 1)
-                append(". ")
-                append(reminder.title)
-                append(" at ")
-                append(AssistantDateTimeParser.formatForDisplay(reminder.remindAt))
-                appendLine()
-            }
-            appendLine()
-            appendLine("Recent AI summaries:")
-            aiResults.forEachIndexed { index, result ->
-                append(index + 1)
-                append(". ")
-                append(result.summary.take(180))
-                appendLine()
+
+            // Reminders (compact)
+            if (reminders.isNotEmpty()) {
+                appendLine("Reminders:")
+                var remindersUsed = 0
+                for (reminder in reminders) {
+                    val line = "- ${reminder.title} at ${AssistantDateTimeParser.formatForDisplay(reminder.remindAt)}"
+                    if (remindersUsed + line.length > budgetReminders) break
+                    appendLine(line)
+                    remindersUsed += line.length
+                }
             }
         }.trim()
     }
@@ -831,6 +1070,15 @@ class AssistantViewModel @Inject constructor(
 
     private fun shouldAllowActionSuggestions(question: String): Boolean {
         val normalized = question.lowercase().trim()
+        // Questions asking FOR information should never auto-create things
+        val infoPatterns = listOf(
+            "^what\\b", "^when\\b", "^where\\b", "^who\\b", "^how\\b",
+            "^tell me\\b", "^show me\\b", "^list\\b", "^do i\\b",
+            "^is (?:there|my|the)\\b", "^are (?:there|my|the)\\b",
+            "^any\\b", "^which\\b", "^can you (?:tell|show|check|look)\\b"
+        )
+        if (infoPatterns.any { Regex(it).containsMatchIn(normalized) }) return false
+
         val directActionPatterns = listOf(
             "\\bremind me\\b",
             "\\bset a reminder\\b",
@@ -842,11 +1090,281 @@ class AssistantViewModel @Inject constructor(
             "\\badd this to my (tasks|todo|to-do|checklist|calendar)\\b",
             "\\bput this on my calendar\\b",
             "\\bcreate an appointment\\b",
-            "\\bset an appointment\\b"
+            "\\bset an appointment\\b",
+            // Informational statements that imply tracking
+            "\\b(?:i have|i got|i've got|there'?s) (?:a |an )?(?:dentist|doctor|appointment|meeting|bill|payment|deadline)\\b",
+            "\\b(?:bill|payment|rent|invoice) (?:is )?due\\b",
+            "\\bdue (?:on|by|next|this|tomorrow)\\b",
+            "\\bneed to (?:pay|remember|do|finish|complete|submit)\\b",
+            "\\bdon'?t forget\\b",
+            "\\btrack (?:this|my|a)\\b"
         )
         if (directActionPatterns.any { Regex(it).containsMatchIn(normalized) }) return true
-        val imperativeStart = listOf("remind", "schedule", "add", "create", "set", "put")
+        val imperativeStart = listOf("remind", "schedule", "add", "create", "set", "put", "track")
         return imperativeStart.any { normalized.startsWith("$it ") }
+    }
+
+    /**
+     * When the local model says "I've added X" in the reply but returns no actions,
+     * extract the action from the user's question so we can auto-execute it.
+     */
+    private fun extractFallbackAction(question: String, reply: String): AssistantActionUi? {
+        val lower = question.lowercase()
+        // Determine type from question intent
+        val isReminder = listOf("remind", "appointment", "schedule", "calendar", "bill", "due", "payment")
+            .any { lower.contains(it) }
+        val type = if (isReminder) "create_reminder" else "create_task"
+
+        // Extract a title: use the model's reply to find keywords, or derive from question
+        val title = extractTitleFromQuestion(question)
+        if (title.isBlank()) return null
+
+        // Extract amount if mentioned
+        val amountMatch = Regex("""\$?\d+(?:\.\d{2})?""").find(question)
+        val amount = amountMatch?.value?.let { if (!it.startsWith("$")) "$$it" else it }
+
+        // Extract date from question using relative day names
+        val scheduledFor = extractDateFromQuestion(question)
+
+        val details = buildString {
+            if (amount != null) append(amount)
+            if (scheduledFor.isBlank() && amount == null) {
+                // No details to add
+            }
+        }.trim()
+
+        val scheduledMillis = if (scheduledFor.isNotBlank()) {
+            AssistantDateTimeParser.parseToEpochMillis(scheduledFor)
+        } else null
+
+        return AssistantActionUi(
+            type = type,
+            title = title,
+            details = details,
+            scheduledForIso = scheduledFor,
+            scheduledForMillis = scheduledMillis,
+            scheduledForLabel = AssistantDateTimeParser.formatForDisplay(scheduledMillis),
+            confirmationLabel = if (type == "create_reminder") "Add reminder" else "Add task",
+            fallbackNote = ""
+        )
+    }
+
+    private fun extractTitleFromQuestion(question: String): String {
+        val patterns = listOf(
+            // "add a bill for electric" / "create a new task for groceries"
+            Regex("""(?:add|create|make|set up)\s+(?:a\s+)?(?:new\s+)?(.+?)(?:\s+for\s+(?:me|us))?(?:\.\s*its|\.\s*it's|,\s*its|,\s*it's|\.\s*due|,\s*due|$)""", RegexOption.IGNORE_CASE),
+            Regex("""(?:add|create|make)\s+(?:a\s+)?(?:new\s+)?(.+?)(?:\s*\.\s*|\s*,\s*|$)""", RegexOption.IGNORE_CASE),
+            // "remind me to call dentist"
+            Regex("""remind me (?:to |about )?(.+?)(?:\s+(?:on|at|by|tomorrow|next|this)\b|$)""", RegexOption.IGNORE_CASE),
+            // "I have a dentist appointment in two weeks" / "I got a meeting tomorrow"
+            Regex("""(?:i have|i got|i've got|there'?s)\s+(?:a\s+|an\s+)?(.+?)(?:\s+(?:in|on|at|next|this|tomorrow|due)\b|$)""", RegexOption.IGNORE_CASE),
+            // "need to pay rent by Friday"
+            Regex("""need to\s+(.+?)(?:\s+(?:by|before|on|at)\b|$)""", RegexOption.IGNORE_CASE),
+            // "bill is due next Tuesday"
+            Regex("""(.+?)\s+(?:is\s+)?due\s""", RegexOption.IGNORE_CASE)
+        )
+        for (pattern in patterns) {
+            val match = pattern.find(question)?.groupValues?.getOrNull(1)?.trim()
+            if (!match.isNullOrBlank() && match.length >= 3) {
+                return match.replaceFirstChar { it.uppercase() }
+            }
+        }
+        // Last resort: strip common verbs and use as title
+        return question.replace(Regex("""^(add|create|make|set|remind me to|remind me about|i have |i got |i've got )\s*""", RegexOption.IGNORE_CASE), "")
+            .trim()
+            .take(60)
+            .replaceFirstChar { it.uppercase() }
+    }
+
+    private fun extractDateFromQuestion(question: String): String {
+        val lower = question.lowercase()
+        val today = java.time.LocalDate.now()
+        val dayNames = mapOf(
+            "monday" to java.time.DayOfWeek.MONDAY,
+            "tuesday" to java.time.DayOfWeek.TUESDAY,
+            "wednesday" to java.time.DayOfWeek.WEDNESDAY,
+            "thursday" to java.time.DayOfWeek.THURSDAY,
+            "friday" to java.time.DayOfWeek.FRIDAY,
+            "saturday" to java.time.DayOfWeek.SATURDAY,
+            "sunday" to java.time.DayOfWeek.SUNDAY
+        )
+        // "in X days/weeks/months"
+        val relativeMatch = Regex("""in (\d+|a|an|two|three|four|five|six) (day|week|month)s?""").find(lower)
+        if (relativeMatch != null) {
+            val numStr = relativeMatch.groupValues[1]
+            val num = when (numStr) {
+                "a", "an" -> 1L
+                "two" -> 2L
+                "three" -> 3L
+                "four" -> 4L
+                "five" -> 5L
+                "six" -> 6L
+                else -> numStr.toLongOrNull() ?: 1L
+            }
+            val target = when (relativeMatch.groupValues[2]) {
+                "day" -> today.plusDays(num)
+                "week" -> today.plusWeeks(num)
+                "month" -> today.plusMonths(num)
+                else -> today.plusDays(num)
+            }
+            return "${target}T09:00"
+        }
+        // "next week" (no specific day)
+        if (lower.contains("next week")) {
+            return "${today.plusWeeks(1)}T09:00"
+        }
+        // Check for "next <day>" or just "<day>"
+        for ((name, dow) in dayNames) {
+            if (lower.contains(name)) {
+                val target = today.with(java.time.temporal.TemporalAdjusters.next(dow))
+                return "${target}T09:00"
+            }
+        }
+        if (lower.contains("tomorrow")) {
+            return "${today.plusDays(1)}T09:00"
+        }
+        if (lower.contains("today")) {
+            return "${today}T18:00"
+        }
+        // Try ISO date pattern in the question
+        val isoMatch = Regex("""\d{4}-\d{2}-\d{2}""").find(question)
+        if (isoMatch != null) {
+            return "${isoMatch.value}T09:00"
+        }
+        return ""
+    }
+
+    /**
+     * Auto-execute proposed actions: create tasks/reminders immediately
+     * and also create a visible Item on the home screen.
+     */
+    private suspend fun autoExecuteActions(actions: List<AssistantActionUi>): List<AssistantActionUi> {
+        return actions.map { action ->
+            runCatching {
+                val itemId = UUID.randomUUID().toString()
+                val now = System.currentTimeMillis()
+                val classification = classificationForAction(action)
+                // Create a visible item on the home screen
+                itemRepository.insert(
+                    ItemEntity(
+                        id = itemId,
+                        type = "assistant",
+                        sourceApp = null,
+                        localUri = null,
+                        thumbnailUri = null,
+                        rawText = buildItemRawText(action),
+                        createdAt = now,
+                        classification = classification
+                    )
+                )
+                // Create an AI result so the detail screen shows a summary
+                aiRepository.saveEditedResult(
+                    itemId = itemId,
+                    rawOutput = "{}",
+                    fallbackSummary = buildItemSummary(action),
+                    modelName = "assistant"
+                )
+                when (action.type) {
+                    "create_task" -> {
+                        taskRepository.addTask(
+                            TaskEntity(
+                                id = UUID.randomUUID().toString(),
+                                itemId = itemId,
+                                title = action.title,
+                                details = action.details.ifBlank { null },
+                                dueAt = action.scheduledForMillis,
+                                isDone = false,
+                                createdAt = now
+                            )
+                        )
+                        action.copy(status = AssistantActionStatus.CONFIRMED, feedback = "Task added.")
+                    }
+                    "create_reminder" -> {
+                        val remindAt = action.scheduledForMillis
+                        if (remindAt != null) {
+                            val reminderId = UUID.randomUUID().toString()
+                            taskRepository.addReminder(
+                                ReminderEntity(
+                                    id = reminderId,
+                                    itemId = itemId,
+                                    title = action.title,
+                                    remindAt = remindAt,
+                                    createdAt = now
+                                )
+                            )
+                            reminderScheduler.schedule(reminderId, action.title, remindAt)
+                            action.copy(status = AssistantActionStatus.CONFIRMED, feedback = "Reminder set.")
+                        } else {
+                            // No date — create as task instead
+                            taskRepository.addTask(
+                                TaskEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    itemId = itemId,
+                                    title = action.title,
+                                    details = action.details.ifBlank { null },
+                                    dueAt = null,
+                                    isDone = false,
+                                    createdAt = now
+                                )
+                            )
+                            action.copy(status = AssistantActionStatus.CONFIRMED, feedback = "Added as task (no date given).")
+                        }
+                    }
+                    else -> action.copy(status = AssistantActionStatus.FAILED, feedback = "Unknown action type.")
+                }
+            }.getOrElse { e ->
+                action.copy(status = AssistantActionStatus.FAILED, feedback = e.message ?: "Failed.")
+            }
+        }
+    }
+
+    private fun classificationForAction(action: AssistantActionUi): String {
+        val titleLower = action.title.lowercase()
+        return when {
+            listOf("bill", "payment", "invoice", "rent", "electric", "water", "gas", "internet", "phone")
+                .any { titleLower.contains(it) } -> "bill"
+            listOf("appointment", "dentist", "doctor", "meeting", "interview")
+                .any { titleLower.contains(it) } -> "appointment"
+            else -> "note"
+        }
+    }
+
+    private fun buildItemRawText(action: AssistantActionUi): String = buildString {
+        append(action.title)
+        if (action.details.isNotBlank()) {
+            append("\n")
+            append(action.details)
+        }
+        if (action.scheduledForLabel.isNotBlank()) {
+            append("\nDue: ")
+            append(action.scheduledForLabel)
+        }
+    }
+
+    private fun buildItemSummary(action: AssistantActionUi): String = buildString {
+        append(action.title)
+        if (action.scheduledForLabel.isNotBlank()) {
+            append(" — ")
+            append(action.scheduledForLabel)
+        }
+    }
+
+    private fun buildAutoExecuteReply(actions: List<AssistantActionUi>): String {
+        val confirmed = actions.filter { it.status == AssistantActionStatus.CONFIRMED }
+        val failed = actions.filter { it.status == AssistantActionStatus.FAILED }
+        return buildString {
+            for (action in confirmed) {
+                val label = if (action.type == "create_reminder") "Reminder" else "Task"
+                append("Done! $label \"${action.title}\" added")
+                if (action.scheduledForLabel.isNotBlank()) {
+                    append(" for ${action.scheduledForLabel}")
+                }
+                appendLine(".")
+            }
+            for (action in failed) {
+                appendLine("Could not add \"${action.title}\": ${action.feedback}")
+            }
+        }.trim()
     }
 
     private fun defaultReferenceLabel(item: ItemEntity): String {
@@ -976,241 +1494,7 @@ class AssistantViewModel @Inject constructor(
         return inferredItem?.let { listOf(AssistantReferenceUi(it.id, defaultReferenceLabel(it))) } ?: emptyList()
     }
 
-    private suspend fun answerFromStoredData(question: String, recentItems: List<ItemEntity>): AssistantChatResult? {
-        val normalized = question.lowercase(Locale.getDefault())
-        return when {
-            looksLikeBillLookup(normalized) -> buildBillLookupAnswer(recentItems)
-            looksLikeAppointmentLookup(normalized) -> buildAppointmentLookupAnswer(recentItems)
-            looksLikeReminderLookup(normalized) -> buildReminderLookupAnswer()
-            looksLikeTaskLookup(normalized) -> buildTaskLookupAnswer()
-            else -> null
-        }
-    }
 
-    private fun looksLikeBillLookup(question: String): Boolean =
-        question.contains("bill") && listOf("next", "upcoming", "due", "when", "what").any(question::contains)
-
-    private fun looksLikeAppointmentLookup(question: String): Boolean =
-        listOf("appointment", "meeting", "visit").any(question::contains) &&
-            listOf("next", "upcoming", "when", "what").any(question::contains)
-
-    private fun looksLikeReminderLookup(question: String): Boolean =
-        question.contains("reminder") && listOf("next", "upcoming", "when", "what").any(question::contains)
-
-    private fun looksLikeTaskLookup(question: String): Boolean =
-        listOf("task", "todo", "to-do", "checklist").any(question::contains) &&
-            listOf("next", "upcoming", "open", "what").any(question::contains)
-
-    private fun buildBillLookupAnswer(items: List<ItemEntity>): AssistantChatResult? {
-        val candidate = items
-            .mapNotNull { item ->
-                if (inferItemKind(item) != "bill") return@mapNotNull null
-                val dueText = extractNaturalDateText(item.rawText)
-                BillLookupCandidate(
-                    item = item,
-                    dueText = dueText,
-                    dueAt = parseNaturalDateTime(dueText),
-                    amount = extractAmount(item.rawText),
-                    vendor = extractBillVendor(item.rawText)
-                )
-            }
-            .sortedWith(compareBy<BillLookupCandidate> { it.dueAt ?: Long.MAX_VALUE }.thenByDescending { it.item.createdAt })
-            .firstOrNull()
-            ?: return null
-        val reply = buildString {
-            append("Your next bill")
-            if (!candidate.vendor.isNullOrBlank()) {
-                append(" is ")
-                append(candidate.vendor)
-            }
-            if (!candidate.amount.isNullOrBlank()) {
-                append(" for ")
-                append(candidate.amount)
-            }
-            candidate.dueText?.let {
-                append(" due ")
-                append(it)
-            }
-            append(".")
-        }
-        return AssistantChatResult(
-            reply = reply,
-            references = listOf(AssistantItemReference(candidate.item.id, "View bill"))
-        )
-    }
-
-    private fun buildAppointmentLookupAnswer(items: List<ItemEntity>): AssistantChatResult? {
-        val candidate = items
-            .mapNotNull { item ->
-                if (inferItemKind(item) != "appointment") return@mapNotNull null
-                val whenText = extractNaturalDateText(item.rawText)
-                AppointmentLookupCandidate(
-                    item = item,
-                    title = extractAppointmentTitle(item.rawText),
-                    whenText = whenText,
-                    whenAt = parseNaturalDateTime(whenText),
-                    location = extractAppointmentLocation(item.rawText)
-                )
-            }
-            .sortedWith(compareBy<AppointmentLookupCandidate> { it.whenAt ?: Long.MAX_VALUE }.thenByDescending { it.item.createdAt })
-            .firstOrNull()
-            ?: return null
-        val reply = buildString {
-            append("Your next appointment")
-            if (!candidate.title.isNullOrBlank()) {
-                append(" is ")
-                append(candidate.title)
-            }
-            candidate.whenText?.let {
-                append(" on ")
-                append(it)
-            }
-            if (!candidate.location.isNullOrBlank()) {
-                append(" at ")
-                append(candidate.location)
-            }
-            append(".")
-        }
-        return AssistantChatResult(
-            reply = reply,
-            references = listOf(AssistantItemReference(candidate.item.id, "View appointment"))
-        )
-    }
-
-    private suspend fun buildReminderLookupAnswer(): AssistantChatResult? {
-        val reminder = taskRepository.getUpcomingReminders(limit = 1).firstOrNull() ?: return null
-        return AssistantChatResult(
-            reply = "Your next reminder is ${reminder.title} at ${AssistantDateTimeParser.formatForDisplay(reminder.remindAt)}."
-        )
-    }
-
-    private suspend fun buildTaskLookupAnswer(): AssistantChatResult? {
-        val task = taskRepository.getOpen(limit = 1).firstOrNull() ?: return null
-        val dueLabel = AssistantDateTimeParser.formatForDisplay(task.dueAt)
-        val reply = if (dueLabel.isNotBlank()) {
-            "Your next open task is ${task.title}, due $dueLabel."
-        } else {
-            "Your next open task is ${task.title}."
-        }
-        return AssistantChatResult(reply = reply)
-    }
-
-    private fun inferItemKind(item: ItemEntity): String {
-        val stored = item.classification?.lowercase(Locale.getDefault()).orEmpty()
-        if (stored.isNotBlank() && stored != "unknown") return stored
-        val raw = item.rawText.lowercase(Locale.getDefault())
-        return when {
-            raw.contains("bill") || raw.contains("amount due") -> "bill"
-            raw.contains("appointment") || raw.contains("meeting") || raw.contains("checkup") || raw.contains("dentist") -> "appointment"
-            raw.contains("message") || raw.contains("email") || raw.contains("text") -> "message"
-            raw.contains("note") -> "note"
-            else -> "unknown"
-        }
-    }
-
-    private fun extractAmount(raw: String): String? =
-        Regex("""\$ ?\d[\d,]*(?:\.\d{2})?""")
-            .find(raw)
-            ?.value
-            ?.replace(" ", "")
-
-    private fun extractBillVendor(raw: String): String? =
-        Regex("""([A-Z][A-Za-z0-9&.' -]{2,40})\s+bill""", RegexOption.IGNORE_CASE)
-            .find(raw)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.trim()
-
-    private fun extractAppointmentTitle(raw: String): String? {
-        val cleaned = raw
-            .removePrefix("Appointment:")
-            .removePrefix("appointment:")
-            .trim()
-        return cleaned.substringBefore(" on ").substringBefore(",").trim().takeIf { it.isNotBlank() }
-    }
-
-    private fun extractAppointmentLocation(raw: String): String? {
-        val commaLocation = raw.substringAfter(", ", "").trim()
-        if (commaLocation.isNotBlank() && commaLocation != raw.trim()) {
-            return commaLocation.substringBefore(".").trim()
-        }
-        return Regex("""\b(?:at|location)\s+([^.,]+(?:\s[^.,]+){0,5})""", RegexOption.IGNORE_CASE)
-            .find(raw)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.trim()
-            ?.takeIf { it.isNotBlank() }
-    }
-
-    private fun extractNaturalDateText(raw: String): String? =
-        Regex(
-            """\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,\s*\d{4})?(?:\s+at\s+\d{1,2}(?::\d{2})?\s*(?:AM|PM))?""",
-            RegexOption.IGNORE_CASE
-        ).find(raw)?.value?.trim()
-
-    private fun parseNaturalDateTime(value: String?): Long? {
-        val text = value?.trim().orEmpty()
-        if (text.isBlank()) return null
-        val normalized = text.replace(Regex("\\s+"), " ")
-        val now = LocalDate.now()
-        val patterns = listOf(
-            "MMM d, yyyy 'at' h:mm a",
-            "MMMM d, yyyy 'at' h:mm a",
-            "MMM d 'at' h:mm a",
-            "MMMM d 'at' h:mm a",
-            "MMM d, yyyy",
-            "MMMM d, yyyy",
-            "MMM d",
-            "MMMM d"
-        )
-        patterns.forEach { pattern ->
-            val hadExplicitYear = normalized.contains(Regex(""",\s*\d{4}\b"""))
-            runCatching {
-                val parseInput = if (pattern.contains("yyyy")) normalized else "$normalized, ${now.year}"
-                val formatter = if (pattern.contains("yyyy")) {
-                    DateTimeFormatter.ofPattern(pattern, Locale.US)
-                } else {
-                    DateTimeFormatterBuilder()
-                        .appendPattern("$pattern, yyyy")
-                        .parseDefaulting(ChronoField.YEAR, now.year.toLong())
-                        .toFormatter(Locale.US)
-                }
-                if (pattern.contains("h:mm")) {
-                    val parsed = LocalDateTime.parse(parseInput, formatter)
-                    adjustYearIfPast(parsed, hadExplicitYear).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                } else {
-                    val parsed = LocalDate.parse(parseInput, formatter)
-                    adjustYearIfPast(parsed.atTime(LocalTime.of(9, 0)), hadExplicitYear)
-                        .atZone(ZoneId.systemDefault())
-                        .toInstant()
-                        .toEpochMilli()
-                }
-            }.getOrNull()?.let { return it }
-        }
-        return null
-    }
-
-    private fun adjustYearIfPast(value: LocalDateTime, hadExplicitYear: Boolean): LocalDateTime {
-        if (hadExplicitYear) return value
-        val now = LocalDateTime.now()
-        return if (value.isBefore(now.minusDays(1))) value.plusYears(1) else value
-    }
-
-    private data class BillLookupCandidate(
-        val item: ItemEntity,
-        val dueText: String?,
-        val dueAt: Long?,
-        val amount: String?,
-        val vendor: String?
-    )
-
-    private data class AppointmentLookupCandidate(
-        val item: ItemEntity,
-        val title: String?,
-        val whenText: String?,
-        val whenAt: Long?,
-        val location: String?
-    )
 }
 
 @HiltViewModel
@@ -1218,19 +1502,85 @@ class ItemDetailViewModel @Inject constructor(
     private val itemRepository: ItemRepository,
     private val aiRepository: AiRepository,
     private val taskRepository: TaskRepository,
-    private val reminderScheduler: ReminderScheduler
+    private val reminderScheduler: ReminderScheduler,
+    private val calendarSyncHelper: com.charles.pocketassistant.util.CalendarSyncHelper
 ) : ViewModel() {
     fun observeItem(itemId: String) = itemRepository.observeById(itemId)
     fun observeLatestResult(itemId: String) = aiRepository.observeLatest(itemId)
 
+    private val _rerunning = MutableStateFlow(false)
+    val rerunning: StateFlow<Boolean> = _rerunning
+
+    private val _calendarStatus = MutableStateFlow("")
+    val calendarStatus: StateFlow<String> = _calendarStatus
+
+    fun hasCalendarPermission(): Boolean = calendarSyncHelper.hasCalendarPermission()
+
+    fun addAppointmentToCalendar(result: com.charles.pocketassistant.domain.model.AiExtractionResult) {
+        val info = result.appointmentInfo
+        val dateStr = info.date.ifBlank { result.entities.dates.firstOrNull() ?: "" }
+        val startMillis = AssistantDateTimeParser.parseToEpochMillis(dateStr)
+        if (startMillis == null) {
+            _calendarStatus.value = "Could not parse date: $dateStr"
+            return
+        }
+        val eventId = calendarSyncHelper.insertEvent(
+            title = info.title.ifBlank { result.summary },
+            description = result.summary,
+            startMillis = startMillis,
+            location = info.location
+        )
+        _calendarStatus.value = if (eventId != null) "Added to calendar" else "Failed — check calendar permissions"
+    }
+
+    fun addBillToCalendar(result: com.charles.pocketassistant.domain.model.AiExtractionResult) {
+        val info = result.billInfo
+        val dateStr = info.dueDate.ifBlank { result.entities.dates.firstOrNull() ?: "" }
+        val millis = AssistantDateTimeParser.parseToEpochMillis(dateStr)
+        if (millis == null) {
+            _calendarStatus.value = "Could not parse due date: $dateStr"
+            return
+        }
+        val eventId = calendarSyncHelper.insertBillReminder(
+            vendor = info.vendor.ifBlank { "Bill" },
+            amount = info.amount,
+            dueDateMillis = millis
+        )
+        _calendarStatus.value = if (eventId != null) "Bill reminder added to calendar" else "Failed — check calendar permissions"
+    }
+
+    fun clearCalendarStatus() { _calendarStatus.value = "" }
+
     fun rerunLocal(itemId: String, rawText: String, sourceType: String) = viewModelScope.launch {
-        val result = aiRepository.runWithMode(itemId, rawText, AiMode.LOCAL, sourceType)
-        itemRepository.updateClassification(itemId, result.classification)
+        Log.d("ItemDetailVM", "rerunLocal: itemId=$itemId textLen=${rawText.length} type=$sourceType")
+        if (rawText.isBlank()) {
+            Log.w("ItemDetailVM", "rerunLocal: rawText is blank, skipping")
+            return@launch
+        }
+        _rerunning.value = true
+        try {
+            val result = aiRepository.runWithMode(itemId, rawText, AiMode.LOCAL, sourceType)
+            Log.d("ItemDetailVM", "rerunLocal done: summary=${result.summary.take(80)} class=${result.classification}")
+            itemRepository.updateClassification(itemId, result.classification)
+        } catch (e: Exception) {
+            Log.e("ItemDetailVM", "rerunLocal failed", e)
+        } finally {
+            _rerunning.value = false
+        }
     }
 
     fun sendToOllama(itemId: String, rawText: String, sourceType: String) = viewModelScope.launch {
-        val result = aiRepository.runWithMode(itemId, rawText, AiMode.OLLAMA, sourceType)
-        itemRepository.updateClassification(itemId, result.classification)
+        Log.d("ItemDetailVM", "sendToOllama: itemId=$itemId textLen=${rawText.length} type=$sourceType")
+        _rerunning.value = true
+        try {
+            val result = aiRepository.runWithMode(itemId, rawText, AiMode.OLLAMA, sourceType)
+            Log.d("ItemDetailVM", "sendToOllama done: summary=${result.summary.take(80)} class=${result.classification}")
+            itemRepository.updateClassification(itemId, result.classification)
+        } catch (e: Exception) {
+            Log.e("ItemDetailVM", "sendToOllama failed", e)
+        } finally {
+            _rerunning.value = false
+        }
     }
 
     fun saveEditedResult(itemId: String, summary: String, extractedJson: String, modelName: String) = viewModelScope.launch {
@@ -1323,6 +1673,8 @@ data class SettingsUiState(
     val ollamaBaseUrl: String = "",
     val ollamaApiToken: String = "",
     val ollamaModelName: String = "",
+    val ollamaRemoteModels: List<String> = emptyList(),
+    val ollamaModelsLoading: Boolean = false,
     val allowSelfSignedCertificates: Boolean = false,
     val showPromptDebug: Boolean = false,
     val dataToolsMessage: String = "",
@@ -1345,6 +1697,8 @@ class SettingsViewModel @Inject constructor(
     private val downloadMessageState = MutableStateFlow("")
     private val localSelfTestMessageState = MutableStateFlow("")
     private val localSelfTestRunningState = MutableStateFlow(false)
+    private val ollamaRemoteModelsState = MutableStateFlow<List<String>>(emptyList())
+    private val ollamaModelsLoadingState = MutableStateFlow(false)
     val state = settingsRepository.settings
         .combine(dataToolsState) { s, dataToolsMessage -> s to dataToolsMessage }
         .combine(downloadState) { (s, dataToolsMessage), downloadState ->
@@ -1382,6 +1736,8 @@ class SettingsViewModel @Inject constructor(
                 localModelSelfTestRunning = selfTestRunning
             )
         }
+        .combine(ollamaRemoteModelsState) { ui, models -> ui.copy(ollamaRemoteModels = models) }
+        .combine(ollamaModelsLoadingState) { ui, loading -> ui.copy(ollamaModelsLoading = loading) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
     private val _testMessage = MutableStateFlow("")
     val testMessage: StateFlow<String> = _testMessage
@@ -1411,13 +1767,6 @@ class SettingsViewModel @Inject constructor(
     }
     fun redownloadModel() = viewModelScope.launch {
         localSelfTestMessageState.value = ""
-        settingsRepository.update {
-            it.copy(
-                localModelDownloadComplete = false,
-                localModelDownloadInProgress = true,
-                localModelDownloadMessage = "Starting ${ModelConfig.profileFor(it.selectedLocalModelId).displayName} download..."
-            )
-        }
         localModelDownloadManager.startOrResume()
     }
     fun selectLocalModel(modelId: String) = viewModelScope.launch {
@@ -1443,11 +1792,42 @@ class SettingsViewModel @Inject constructor(
     fun togglePromptDebug(enabled: Boolean) = viewModelScope.launch {
         settingsRepository.update { it.copy(showPromptDebug = enabled) }
     }
+    fun refreshOllamaModels() = viewModelScope.launch {
+        val s = settingsRepository.settings.first()
+        if (s.ollamaBaseUrl.isBlank()) {
+            ollamaRemoteModelsState.value = emptyList()
+            return@launch
+        }
+        ollamaModelsLoadingState.value = true
+        val result = ollamaRepositoryImpl.testConnection()
+        ollamaModelsLoadingState.value = false
+        if (result.isSuccess) {
+            val models = result.getOrNull().orEmpty()
+            ollamaRemoteModelsState.value = models
+            ollamaRepositoryImpl.applyDefaultOllamaModelIfNeeded(models)
+        } else {
+            ollamaRemoteModelsState.value = emptyList()
+        }
+    }
+
     fun testOllama() = viewModelScope.launch {
-        _testMessage.value = ollamaRepositoryImpl.testConnection().fold(
-            onSuccess = { "Connected. Found ${it.size} model(s)." },
-            onFailure = { "Connection failed: ${it.message}" }
-        )
+        val s = settingsRepository.settings.first()
+        if (s.ollamaBaseUrl.isBlank()) {
+            _testMessage.value = "Enter a base URL first."
+            return@launch
+        }
+        ollamaModelsLoadingState.value = true
+        val result = ollamaRepositoryImpl.testConnection()
+        ollamaModelsLoadingState.value = false
+        if (result.isSuccess) {
+            val models = result.getOrNull().orEmpty()
+            ollamaRemoteModelsState.value = models
+            ollamaRepositoryImpl.applyDefaultOllamaModelIfNeeded(models)
+            _testMessage.value = "Connected. Found ${models.size} model(s)."
+        } else {
+            ollamaRemoteModelsState.value = emptyList()
+            _testMessage.value = "Connection failed: ${result.exceptionOrNull()?.message}"
+        }
     }
     fun runLocalModelSelfTest() = viewModelScope.launch {
         localSelfTestRunningState.value = true

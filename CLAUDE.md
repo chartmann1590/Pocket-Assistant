@@ -24,11 +24,14 @@ Single-module Android app (`:app`) using Kotlin, Jetpack Compose, and Hilt DI.
 - `ai/` — AI routing, local LLM engine, Ollama client, prompt templates, JSON parsing
 - `data/` — Room database, DAOs, repositories, DataStore preferences, Retrofit API
 - `domain/` — Data models (`AiExtractionResult`, `AssistantChatResult`)
+- `ml/` — ML Kit entity extraction (dates, money, contacts) complementary to LLM output
 - `ocr/` — ML Kit text recognition + PDF page rendering (max 5 pages)
 - `ui/` — Compose screens, ViewModels, navigation (`AppNav.kt`)
 - `worker/` — `ModelDownloadWorker` (WorkManager, Hugging Face downloads)
 - `di/` — Hilt modules (`AppModule`)
-- `util/` — Reminder scheduling, date parsing
+- `util/` — Reminder scheduling, date parsing, notifications, optional calendar helpers
+
+**Repo assets:** UI and automation screenshots are under `screenshots/device/` and `screenshots/automation/` (root of repo), not inside `:app`.
 
 **Key data flow:**
 1. Input arrives via share intent or manual import → `ImportViewModel`

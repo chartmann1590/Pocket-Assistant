@@ -4,7 +4,8 @@
 This repository is a single-module Android app (`:app`) built with Gradle Kotlin DSL.
 
 - App code: `app/src/main/java/com/charles/pocketassistant/`
-- Feature/domain grouping: `ui/`, `data/`, `ai/`, `ocr/`, `worker/`, `di/`, `util/`, `domain/`
+- Feature/domain grouping: `ui/`, `data/`, `ai/`, `ocr/`, `worker/`, `di/`, `util/`, `domain/`, `ml/`
+- Device and automation screenshots (docs / QA): `screenshots/device/`, `screenshots/automation/` at repo root
 - Android resources and manifest: `app/src/main/res/`, `app/src/main/AndroidManifest.xml`
 - Build configuration: `build.gradle.kts`, `app/build.gradle.kts`, `gradle/libs.versions.toml`
 - Generated outputs: `build/`, `app/build/` (do not edit these)

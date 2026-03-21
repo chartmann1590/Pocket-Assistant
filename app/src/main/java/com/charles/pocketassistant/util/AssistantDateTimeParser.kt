@@ -6,9 +6,24 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
 import java.time.format.FormatStyle
+import java.time.temporal.ChronoField
+import java.util.Locale
 
 object AssistantDateTimeParser {
+    private val HUMAN_DATE_FORMATS = listOf(
+        DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("MMMM d yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("MMM d yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("M/d/yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("MM-dd-yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.ENGLISH),
+    )
+
     fun parseToEpochMillis(raw: String): Long? {
         val value = raw.trim()
         if (value.isBlank()) return null
@@ -27,6 +42,20 @@ object AssistantDateTimeParser {
                     .toInstant()
                     .toEpochMilli()
             }.getOrNull()
+            ?: parseHumanDate(value)
+    }
+
+    private fun parseHumanDate(value: String): Long? {
+        for (fmt in HUMAN_DATE_FORMATS) {
+            runCatching {
+                LocalDate.parse(value, fmt)
+                    .atTime(9, 0)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+            }.getOrNull()?.let { return it }
+        }
+        return null
     }
 
     fun formatForDisplay(epochMillis: Long?): String {

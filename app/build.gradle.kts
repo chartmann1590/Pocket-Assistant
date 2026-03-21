@@ -18,7 +18,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.charles.pocketassistant.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -93,12 +93,16 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.entity.extraction)
     implementation(files("libs/litertlm-android-0.8.0-classes.jar"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.hilt.android.testing)
+    kaptAndroidTest(libs.hilt.compiler)
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

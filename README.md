@@ -38,6 +38,17 @@ Single Gradle module `:app` (Kotlin DSL). Main code lives under:
 
 Resources and manifest: `app/src/main/res/`, `app/src/main/AndroidManifest.xml`. Version catalog: `gradle/libs.versions.toml`. LiteRT-LM JAR: `app/libs/` (see app `build.gradle.kts`).
 
+## Screenshots
+
+Device and UI reference captures live under **`screenshots/`** at the repo root (not under `app/src`):
+
+| Path | Contents |
+|------|----------|
+| `screenshots/device/` | Hand-captured device screens (home, detail, scroll states, etc.) |
+| `screenshots/automation/` | Saved frames from emulator/automation runs (debugging and regression context) |
+
+Add new marketing or documentation images under `screenshots/device/` with clear names. Prefer keeping transient automation output in `screenshots/automation/` or a dated subfolder if the set grows large.
+
 ## Build and run
 
 From the repository root:

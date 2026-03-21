@@ -1,5 +1,11 @@
 package com.charles.pocketassistant.ui.assistant
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,16 +13,29 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -35,8 +54,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -60,9 +79,7 @@ fun AssistantScreen(nav: NavHostController, vm: AssistantViewModel = hiltViewMod
     val totalRows = state.messages.size + if (state.running) 1 else 0
 
     LaunchedEffect(totalRows, state.running) {
-        if (totalRows > 0) {
-            listState.animateScrollToItem(totalRows - 1)
-        }
+        if (totalRows > 0) listState.animateScrollToItem(totalRows - 1)
     }
 
     Scaffold(
@@ -70,101 +87,139 @@ fun AssistantScreen(nav: NavHostController, vm: AssistantViewModel = hiltViewMod
             TopAppBar(
                 title = {
                     Column {
-                        Text("Assistant")
-                        Text(
-                            state.currentThreadTitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("Assistant", fontWeight = FontWeight.Bold)
+                        if (state.currentThreadTitle.isNotBlank() && state.currentThreadTitle != "New chat") {
+                            Text(
+                                state.currentThreadTitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
-                    TextButton(onClick = { nav.popBackStack() }) {
-                        Text("Back")
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { showHistory = true }) {
-                        Text("History")
+                    IconButton(onClick = { showHistory = true }) {
+                        Icon(Icons.Outlined.History, contentDescription = "History")
                     }
-                    TextButton(onClick = vm::startNewThread) {
-                        Text("New")
+                    IconButton(onClick = vm::startNewThread) {
+                        Icon(Icons.Outlined.Add, contentDescription = "New chat")
                     }
                 }
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                )
                 .padding(padding)
         ) {
-            Column(
+            // Messages list
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 6.dp, bottom = 8.dp)
-                ) {
-                    itemsIndexed(state.messages, key = { _, message -> message.id }) { index, message ->
-                        if (shouldShowDateHeader(state.messages, index)) {
-                            DateDivider(message.createdAt)
-                        }
-                        MessageBubble(
-                            message = message,
-                            onOpenReference = { nav.navigate("detail/${it.itemId}") },
-                            onConfirmAction = { vm.confirmAssistantAction(message.id, it.id) },
-                            onDismissAction = { vm.dismissAssistantAction(message.id, it.id) }
-                        )
-                    }
-                    if (state.running) {
-                        item {
-                            PendingBubble(state.runningLabel.ifBlank { "Assistant is thinking..." })
-                        }
-                    }
-                }
-                if (state.error.isNotBlank()) {
-                    Text(state.error, color = MaterialTheme.colorScheme.error)
-                }
-                Surface(
-                    tonalElevation = 3.dp,
-                    shadowElevation = 2.dp,
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        SimpleInput(
-                            label = "Message",
-                            value = state.input,
-                            onValue = vm::updateInput,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = false
-                        )
-                        Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                            Button(onClick = vm::send, enabled = !state.running) {
-                                Text(if (state.running) "Thinking..." else "Send")
+                if (state.messages.isEmpty() && !state.running) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 48.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
+                            Text("Ask me anything", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "I can help with your imported items, tasks, reminders, and general questions.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            )
                         }
+                    }
+                }
+                itemsIndexed(state.messages, key = { _, message -> message.id }) { index, message ->
+                    if (shouldShowDateHeader(state.messages, index)) {
+                        DateDivider(message.createdAt)
+                    }
+                    MessageBubble(
+                        message = message,
+                        onOpenReference = { nav.navigate("detail/${it.itemId}") },
+                        onConfirmAction = { vm.confirmAssistantAction(message.id, it.id) },
+                        onDismissAction = { vm.dismissAssistantAction(message.id, it.id) }
+                    )
+                }
+                if (state.running) {
+                    item { PendingBubble(state.runningLabel.ifBlank { "Thinking..." }) }
+                }
+            }
+
+            // Error
+            if (state.error.isNotBlank()) {
+                Text(
+                    state.error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            // Input area
+            Surface(
+                tonalElevation = 2.dp,
+                shadowElevation = 4.dp,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SimpleInput(
+                        label = "Message",
+                        value = state.input,
+                        onValue = vm::updateInput,
+                        modifier = Modifier.weight(1f),
+                        singleLine = false
+                    )
+                    FilledTonalIconButton(
+                        onClick = vm::send,
+                        enabled = !state.running && state.input.isNotBlank(),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -176,12 +231,12 @@ fun AssistantScreen(nav: NavHostController, vm: AssistantViewModel = hiltViewMod
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Saved chats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Chat history", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 if (state.threads.isEmpty()) {
-                    Text("No saved chats yet.")
+                    Text("No saved chats yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     state.threads.forEach { thread ->
                         ThreadRow(
@@ -194,6 +249,7 @@ fun AssistantScreen(nav: NavHostController, vm: AssistantViewModel = hiltViewMod
                         )
                     }
                 }
+                Spacer(Modifier.size(8.dp))
             }
         }
     }
@@ -208,22 +264,24 @@ private fun MessageBubble(
 ) {
     val isUser = message.role == "user"
     val bubbleShape = if (isUser) {
-        RoundedCornerShape(topStart = 22.dp, topEnd = 8.dp, bottomEnd = 22.dp, bottomStart = 22.dp)
+        RoundedCornerShape(topStart = 20.dp, topEnd = 6.dp, bottomEnd = 20.dp, bottomStart = 20.dp)
     } else {
-        RoundedCornerShape(topStart = 8.dp, topEnd = 22.dp, bottomEnd = 22.dp, bottomStart = 22.dp)
+        RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 20.dp)
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(0.82f),
+            modifier = Modifier.fillMaxWidth(0.85f),
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
         ) {
             Surface(
-                color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                contentColor = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                tonalElevation = if (isUser) 0.dp else 2.dp,
+                color = if (isUser) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                contentColor = if (isUser) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurface,
+                tonalElevation = if (isUser) 0.dp else 1.dp,
                 shape = bubbleShape
             ) {
                 Column(
@@ -235,10 +293,10 @@ private fun MessageBubble(
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             message.references.forEach { reference ->
                                 TextButton(onClick = { onOpenReference(reference) }) {
-                                Text(reference.label)
+                                    Text(reference.label, style = MaterialTheme.typography.labelMedium)
+                                }
                             }
                         }
-                    }
                     }
                     if (message.actions.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -265,20 +323,50 @@ private fun MessageBubble(
 
 @Composable
 private fun PendingBubble(label: String) {
+    val transition = rememberInfiniteTransition(label = "thinking")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "thinkingAlpha"
+    )
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
             contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 2.dp,
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 22.dp, bottomEnd = 22.dp, bottomStart = 22.dp),
-            modifier = Modifier.fillMaxWidth(0.72f)
+            tonalElevation = 1.dp,
+            shape = RoundedCornerShape(topStart = 6.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 20.dp),
+            modifier = Modifier.fillMaxWidth(0.65f)
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(label, style = MaterialTheme.typography.bodyMedium)
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                                )
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(2.dp))
+                )
             }
         }
     }
@@ -289,29 +377,44 @@ private fun ThreadRow(thread: AssistantThreadUi, selected: Boolean, onClick: () 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 1.dp else 0.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    if (selected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
-                    else MaterialTheme.colorScheme.surface
-                )
                 .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                thread.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-            )
-            Text(
-                formatThreadTime(thread.updatedAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    thread.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    formatThreadTime(thread.updatedAt),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
         }
     }
 }
@@ -320,20 +423,20 @@ private fun ThreadRow(thread: AssistantThreadUi, selected: Boolean, onClick: () 
 private fun DateDivider(timestamp: Long) {
     if (timestamp <= 0L) return
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.Center
     ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-            shape = RoundedCornerShape(999.dp)
-        ) {
-            Text(
-                text = formatMessageDate(timestamp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-            )
-        }
+        Text(
+            text = formatMessageDate(timestamp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+        )
     }
 }
 
@@ -344,24 +447,38 @@ private fun AssistantActionCard(
     onDismiss: () -> Unit
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-        shape = MaterialTheme.shapes.large
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                if (action.type == "create_reminder") "Proposed reminder" else "Proposed task",
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.labelLarge
-            )
-            Text(action.title)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (action.type == "create_reminder") MaterialTheme.colorScheme.tertiary
+                            else MaterialTheme.colorScheme.primary
+                        )
+                )
+                Text(
+                    if (action.type == "create_reminder") "Proposed reminder" else "Proposed task",
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            Text(action.title, style = MaterialTheme.typography.bodyMedium)
             if (action.details.isNotBlank()) {
-                Text(action.details, style = MaterialTheme.typography.bodySmall)
+                Text(action.details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (action.scheduledForLabel.isNotBlank()) {
-                Text("When: ${action.scheduledForLabel}", style = MaterialTheme.typography.bodySmall)
+                Text("When: ${action.scheduledForLabel}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
             if (action.fallbackNote.isNotBlank()) {
-                Text(action.fallbackNote, style = MaterialTheme.typography.bodySmall)
+                Text(action.fallbackNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (action.feedback.isNotBlank()) {
                 Text(
@@ -379,20 +496,28 @@ private fun AssistantActionCard(
                     AssistantActionStatus.FAILED -> action.type != "create_reminder" || action.scheduledForMillis != null
                     else -> false
                 }
-                Button(onClick = onConfirm, enabled = canConfirm && action.status != AssistantActionStatus.APPLYING) {
+                Button(
+                    onClick = onConfirm,
+                    enabled = canConfirm && action.status != AssistantActionStatus.APPLYING,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
                     Text(
                         when (action.status) {
                             AssistantActionStatus.APPLYING -> "Adding..."
                             AssistantActionStatus.CONFIRMED -> "Added"
                             else -> action.confirmationLabel
-                        }
+                        },
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
                 TextButton(
                     onClick = onDismiss,
                     enabled = action.status == AssistantActionStatus.PROPOSED || action.status == AssistantActionStatus.FAILED
                 ) {
-                    Text(if (action.status == AssistantActionStatus.FAILED) "Dismiss" else "Not now")
+                    Text(
+                        if (action.status == AssistantActionStatus.FAILED) "Dismiss" else "Not now",
+                        style = MaterialTheme.typography.labelMedium
+                    )
                 }
             }
         }

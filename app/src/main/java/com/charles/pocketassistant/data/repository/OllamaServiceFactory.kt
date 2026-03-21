@@ -45,7 +45,7 @@ class OllamaServiceFactory @Inject constructor() {
                 )
             })
         }
-        val normalized = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+        val normalized = OllamaUrlNormalizer.normalize(baseUrl)
         return Retrofit.Builder()
             .baseUrl(normalized)
             .client(builder.build())
