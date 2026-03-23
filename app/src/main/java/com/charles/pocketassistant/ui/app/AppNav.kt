@@ -2,6 +2,7 @@ package com.charles.pocketassistant.ui.app
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import android.app.Activity
 import androidx.compose.runtime.Composable
@@ -53,7 +54,7 @@ fun AppNav(
         importViewModel.consumeCompletedItemNavigation()
     }
 
-    Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
+    Column(modifier = Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
     NavHost(navController = nav, startDestination = startDestination, modifier = Modifier.weight(1f)) {
         composable("onboarding") { OnboardingScreen(nav) }
         composable("home") { HomeScreen(nav, importViewModel) }

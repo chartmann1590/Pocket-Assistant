@@ -87,6 +87,13 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun settings_displaysAboutAndSupportSection() {
+        composeRule.onNodeWithText("About & Support").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("GitHub Repository").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Sponsor / Buy Me a Coffee").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun settings_aiModeSelector_switchesToOllama() {
         composeRule.onNodeWithText("Ollama").performClick()
         composeRule.waitUntil(5000) {

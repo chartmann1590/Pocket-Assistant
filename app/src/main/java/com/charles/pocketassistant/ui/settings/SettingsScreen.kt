@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -15,16 +17,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,19 +48,26 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import com.charles.pocketassistant.ai.local.ModelConfig
 import com.charles.pocketassistant.ai.prompt.PromptFactory
 import com.charles.pocketassistant.ui.SettingsViewModel
@@ -65,6 +79,7 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
     val state by vm.state.collectAsState()
     val testMessage by vm.testMessage.collectAsState()
     val uriHandler = LocalUriHandler.current
+    var showSponsorModal by remember { mutableStateOf(false) }
     val selectedProfile = state.availableModels.firstOrNull { it.id == state.selectedLocalModelId } ?: ModelConfig.defaultProfile
     val modes = listOf("Local", "Ollama", "Auto")
     val selectedModeIndex = when (state.aiMode) {
@@ -82,6 +97,7 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -128,7 +144,7 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
                             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         ),
-                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                         else null
                     ) {
                         Row(
@@ -365,8 +381,70 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
                 PrivacyItem("Data stays local unless you choose Ollama")
             }
 
+            // About & Support
+            SettingsSection(
+                icon = Icons.Outlined.Language,
+                title = "About & Support",
+                iconTint = MaterialTheme.colorScheme.primary
+            ) {
+                Text(
+                    "Support the project and follow development updates.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedButton(
+                    onClick = { uriHandler.openUri("https://github.com/chartmann1590/Pocket-Assistant") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("GitHub Repository")
+                }
+                FilledTonalButton(
+                    onClick = { showSponsorModal = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Outlined.Favorite, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Sponsor / Buy Me a Coffee")
+                }
+            }
+
             Spacer(Modifier.size(16.dp))
         }
+    }
+
+    if (showSponsorModal) {
+        AlertDialog(
+            onDismissRequest = { showSponsorModal = false },
+            title = { Text("Support Pocket Assistant") },
+            text = {
+                AndroidView(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(420.dp),
+                    factory = { context ->
+                        WebView(context).apply {
+                            webViewClient = WebViewClient()
+                            settings.javaScriptEnabled = true
+                            loadUrl("https://buymeacoffee.com/charleshartmann")
+                        }
+                    },
+                    update = { webView ->
+                        if (webView.url != "https://buymeacoffee.com/charleshartmann") {
+                            webView.loadUrl("https://buymeacoffee.com/charleshartmann")
+                        }
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showSponsorModal = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 
