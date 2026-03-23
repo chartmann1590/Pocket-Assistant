@@ -3,6 +3,8 @@ package com.charles.pocketassistant.data.datastore
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +30,9 @@ data class UserSettings(
     val allowSelfSignedCertificates: Boolean = false,
     val showPromptDebug: Boolean = false,
     val localModelDownloadComplete: Boolean = false,
-    val localModelDownloadInProgress: Boolean = false
+    val localModelDownloadInProgress: Boolean = false,
+    val rewardCredits: Int = 0,
+    val adFreeUntil: Long = 0L
 )
 
 fun UserSettings.isOllamaConfigured(): Boolean =
@@ -52,6 +56,8 @@ class SettingsStore(private val context: Context) {
         val showPromptDebug = booleanPreferencesKey("showPromptDebug")
         val localModelDownloadComplete = booleanPreferencesKey("localModelDownloadComplete")
         val localModelDownloadInProgress = booleanPreferencesKey("localModelDownloadInProgress")
+        val rewardCredits = intPreferencesKey("rewardCredits")
+        val adFreeUntil = longPreferencesKey("adFreeUntil")
     }
 
     val settings: Flow<UserSettings> = context.dataStore.data.map { prefs ->
@@ -71,7 +77,9 @@ class SettingsStore(private val context: Context) {
             allowSelfSignedCertificates = prefs[Keys.allowSelfSignedCertificates] ?: false,
             showPromptDebug = prefs[Keys.showPromptDebug] ?: false,
             localModelDownloadComplete = prefs[Keys.localModelDownloadComplete] ?: false,
-            localModelDownloadInProgress = prefs[Keys.localModelDownloadInProgress] ?: false
+            localModelDownloadInProgress = prefs[Keys.localModelDownloadInProgress] ?: false,
+            rewardCredits = prefs[Keys.rewardCredits] ?: 0,
+            adFreeUntil = prefs[Keys.adFreeUntil] ?: 0L
         )
     }
 
@@ -93,7 +101,9 @@ class SettingsStore(private val context: Context) {
                 allowSelfSignedCertificates = prefs[Keys.allowSelfSignedCertificates] ?: false,
                 showPromptDebug = prefs[Keys.showPromptDebug] ?: false,
                 localModelDownloadComplete = prefs[Keys.localModelDownloadComplete] ?: false,
-                localModelDownloadInProgress = prefs[Keys.localModelDownloadInProgress] ?: false
+                localModelDownloadInProgress = prefs[Keys.localModelDownloadInProgress] ?: false,
+                rewardCredits = prefs[Keys.rewardCredits] ?: 0,
+                adFreeUntil = prefs[Keys.adFreeUntil] ?: 0L
             )
             val next = transform(current)
             prefs[Keys.onboardingComplete] = next.onboardingComplete
@@ -112,6 +122,8 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.showPromptDebug] = next.showPromptDebug
             prefs[Keys.localModelDownloadComplete] = next.localModelDownloadComplete
             prefs[Keys.localModelDownloadInProgress] = next.localModelDownloadInProgress
+            prefs[Keys.rewardCredits] = next.rewardCredits
+            prefs[Keys.adFreeUntil] = next.adFreeUntil
         }
     }
 }

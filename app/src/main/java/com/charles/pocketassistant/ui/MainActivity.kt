@@ -6,15 +6,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import com.charles.pocketassistant.ads.AdManager
+import com.charles.pocketassistant.ml.DocumentScannerHelper
 import com.charles.pocketassistant.ui.app.AppNav
 import com.charles.pocketassistant.ui.theme.PocketAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val importViewModel: ImportViewModel by viewModels()
+
+    @Inject lateinit var documentScannerHelper: DocumentScannerHelper
+    @Inject lateinit var adManager: AdManager
+
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             contentResolver.takePersistableUriPermissionIfPossible(it)
@@ -27,6 +35,23 @@ class MainActivity : ComponentActivity() {
             importViewModel.importUri(it, "pdf")
         }
     }
+    private val documentScannerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val scanResult = documentScannerHelper.handleResult(result)
+        if (scanResult != null) {
+            // Process scanned pages as images (better quality than raw photos)
+            scanResult.pageImageUris.forEach { uri ->
+                importViewModel.importUri(uri, "image", sourceApp = "Document Scanner")
+            }
+        }
+    }
+
+    private fun launchDocumentScanner() {
+        documentScannerHelper.getStartIntent(this) { intentSenderRequest ->
+            documentScannerLauncher.launch(intentSenderRequest)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +62,9 @@ class MainActivity : ComponentActivity() {
                 AppNav(
                     pickImage = { pickImage.launch("image/*") },
                     pickPdf = { pickPdf.launch("application/pdf") },
-                    importViewModel = importViewModel
+                    scanDocument = { launchDocumentScanner() },
+                    importViewModel = importViewModel,
+                    adManager = adManager
                 )
             }
         }

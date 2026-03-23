@@ -1,0 +1,14 @@
+# SDK path (auto-configured by Android Studio)
+# sdk.dir=/path/to/Android/Sdk
+
+# Ads configuration
+# Set ADS_ENABLED=true to enable ads, false to disable (default: false)
+ADS_ENABLED=false
+# Your AdMob app ID (required if ADS_ENABLED=true)
+ADMOB_APP_ID=
+# Your AdMob banner ad unit ID (required if ADS_ENABLED=true)
+ADMOB_BANNER_ID=
+# Your AdMob interstitial ad unit ID (required if ADS_ENABLED=true)
+ADMOB_INTERSTITIAL_ID=
+# Your AdMob rewarded ad unit ID (required if ADS_ENABLED=true)
+ADMOB_REWARDED_ID=

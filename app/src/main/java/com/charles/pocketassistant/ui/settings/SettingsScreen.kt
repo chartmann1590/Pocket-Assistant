@@ -236,6 +236,28 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
 
             // Ollama
             SettingsSection(icon = Icons.Outlined.Cloud, title = "Ollama Server", iconTint = MaterialTheme.colorScheme.secondary) {
+                if (state.ollamaModelName.isNotBlank()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.Cloud, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Active model", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(state.ollamaModelName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+
                 SimpleInput("Base URL", state.ollamaBaseUrl, vm::updateBaseUrl, Modifier.fillMaxWidth())
                 SimpleInput(
                     "API token (optional)",

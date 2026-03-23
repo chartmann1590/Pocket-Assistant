@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.charles.pocketassistant.ads.AdManager
+import com.charles.pocketassistant.ai.DirectAnswerEngine
 import com.charles.pocketassistant.ai.local.LocalLlmEngine
 import com.charles.pocketassistant.ai.local.LocalModelDownloadManager
 import com.charles.pocketassistant.ai.local.LocalModelManager
@@ -327,7 +329,8 @@ class ImportViewModel @Inject constructor(
     private val itemRepository: ItemRepository,
     private val aiRepository: AiRepository,
     private val ocrEngine: OcrEngine,
-    private val notificationHelper: com.charles.pocketassistant.util.NotificationHelper
+    private val notificationHelper: com.charles.pocketassistant.util.NotificationHelper,
+    private val barcodeScannerEngine: com.charles.pocketassistant.ml.BarcodeScannerEngine
 ) : ViewModel() {
     val items = itemRepository.observeItems().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val _processing = MutableStateFlow(ProcessingUiState())
@@ -424,10 +427,26 @@ class ImportViewModel @Inject constructor(
     ) {
         _processing.value = ProcessingUiState(running = true, ocrProgress = 15, aiProgress = 0, modeUsed = "pending")
         val raw = ocrEngine.fromUri(uri)
-        if (raw.isBlank()) error("No OCR text found.")
+        // Scan for barcodes on image imports (fast, ~50ms)
+        val barcodes = if (type == "image" || type == "screenshot") {
+            barcodeScannerEngine.scanFromUri(uri)
+        } else emptyList()
+        if (raw.isBlank() && barcodes.isEmpty()) error("No text or barcodes found.")
+        // Prepend barcode data to the text so AI can process it
+        val barcodePrefix = if (barcodes.isNotEmpty()) {
+            barcodes.joinToString("\n") { b ->
+                buildString {
+                    append("[Barcode/${b.type.name}: ${b.displayValue}]")
+                    b.url?.let { append(" URL: $it") }
+                    b.email?.let { append(" Email: $it") }
+                    b.phone?.let { append(" Phone: $it") }
+                }
+            } + "\n\n"
+        } else ""
+        val combinedText = barcodePrefix + raw
         _processing.value = _processing.value.copy(ocrProgress = 100, aiProgress = 10)
         processTextImport(
-            text = raw,
+            text = combinedText,
             sourceApp = sourceApp,
             type = type,
             localUri = uri.toString(),
@@ -440,13 +459,18 @@ class ImportViewModel @Inject constructor(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val itemRepository: ItemRepository,
-    private val aiRepository: AiRepository
+    private val aiRepository: AiRepository,
+    private val semanticSearchEngine: com.charles.pocketassistant.ml.SemanticSearchEngine,
+    private val priorityScorer: com.charles.pocketassistant.ml.PriorityScorer
 ) : ViewModel() {
     val items = itemRepository.observeItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _summaries = MutableStateFlow<Map<String, String>>(emptyMap())
     val summaries: StateFlow<Map<String, String>> = _summaries
+
+    private val _priorityScores = MutableStateFlow<Map<String, Float>>(emptyMap())
+    val priorityScores: StateFlow<Map<String, Float>> = _priorityScores
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -460,6 +484,23 @@ class HomeViewModel @Inject constructor(
             _searchResults.value = null
         } else {
             viewModelScope.launch {
+                // First try semantic search for better relevance
+                val allItems = items.value
+                if (allItems.isNotEmpty()) {
+                    val texts = allItems.map { item ->
+                        val summary = _summaries.value[item.id] ?: ""
+                        "$summary ${item.rawText.take(200)} ${item.classification ?: ""}"
+                    }
+                    val ranked = semanticSearchEngine.rankBySimilarity(query, texts, topK = 20)
+                    val semanticResults = ranked
+                        .filter { it.similarity > 0.05f }
+                        .map { allItems[it.index] }
+                    if (semanticResults.isNotEmpty()) {
+                        _searchResults.value = semanticResults
+                        return@launch
+                    }
+                }
+                // Fallback to SQL LIKE search
                 itemRepository.search(query).collect { results ->
                     _searchResults.value = results
                 }
@@ -474,7 +515,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            items.collect { _ ->
+            items.collect { itemList ->
                 val results = aiRepository.getRecentResults(200)
                 val map = mutableMapOf<String, String>()
                 for (r in results) {
@@ -483,6 +524,31 @@ class HomeViewModel @Inject constructor(
                     }
                 }
                 _summaries.value = map
+
+                // Update semantic search IDF index
+                val corpus = itemList.map { item ->
+                    val summary = map[item.id] ?: ""
+                    "$summary ${item.rawText.take(300)}"
+                }
+                if (corpus.isNotEmpty()) {
+                    semanticSearchEngine.updateIdf(corpus)
+                }
+
+                // Score priorities for all items
+                val scores = mutableMapOf<String, Float>()
+                for (item in itemList) {
+                    val summary = map[item.id] ?: item.rawText.take(200)
+                    val extractedAmount = Regex("""\$[\d,]+\.?\d*""").find(summary)
+                        ?.value?.replace("$", "")?.replace(",", "")?.toDoubleOrNull()
+                    val features = com.charles.pocketassistant.ml.ItemFeatures(
+                        classification = item.classification ?: "unknown",
+                        text = summary,
+                        dollarAmount = extractedAmount,
+                        createdAtMillis = item.createdAt
+                    )
+                    scores[item.id] = priorityScorer.score(features).score
+                }
+                _priorityScores.value = scores
             }
         }
     }
@@ -538,7 +604,8 @@ data class AssistantUiState(
     val input: String = "",
     val running: Boolean = false,
     val runningLabel: String = "",
-    val error: String = ""
+    val error: String = "",
+    val smartReplies: List<String> = emptyList()
 )
 
 @HiltViewModel
@@ -550,7 +617,9 @@ class AssistantViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val localLlmEngine: LocalLlmEngine,
     private val ollamaRepositoryImpl: OllamaRepositoryImpl,
-    private val reminderScheduler: ReminderScheduler
+    private val reminderScheduler: ReminderScheduler,
+    private val smartReplyEngine: com.charles.pocketassistant.ml.SmartReplyEngine,
+    private val directAnswerEngine: DirectAnswerEngine
 ) : ViewModel() {
     private companion object {
         // ~6000 chars ≈ ~1500 tokens, leaving room for prompt template + question + response
@@ -637,7 +706,34 @@ class AssistantViewModel @Inject constructor(
             )
             val recentItems = itemRepository.getRecent(50)
             val threadHistory = chatRepository.getRecentMessages(threadId, 8)
-            val fullContext = buildContext(recentItems, threadHistory, question)
+            val tasks = taskRepository.getOpen(50)
+            val reminders = taskRepository.getUpcomingReminders()
+            val aiResults = aiRepository.getRecentResults(200)
+            val aiResultMap = mutableMapOf<String, com.charles.pocketassistant.data.db.entity.AiResultEntity>()
+            for (r in aiResults) {
+                if (r.itemId !in aiResultMap) aiResultMap[r.itemId] = r
+            }
+
+            // Update IDF for semantic search with current item corpus
+            directAnswerEngine.updateSearchIndex(recentItems, aiResultMap)
+
+            // RAG-style retrieval: semantic + keyword search finds the RIGHT items
+            val relevantItems = directAnswerEngine.findRelevantItems(question, recentItems, aiResultMap)
+            Log.d("AssistantVM", "RAG: found ${relevantItems.size} relevant items" +
+                (relevantItems.firstOrNull()?.let { " (top: ${it.item.classification} score=${it.relevanceScore})" } ?: ""))
+
+            // Build structured context the LLM can actually use (even a 0.6B model)
+            val historyPairs = threadHistory.map { it.role to it.text }
+            val fullContext = directAnswerEngine.buildStructuredContext(
+                question = question,
+                relevantItems = relevantItems,
+                allItems = recentItems,
+                aiResults = aiResultMap,
+                tasks = tasks,
+                reminders = reminders,
+                threadHistory = historyPairs
+            )
+
             val settings = settingsRepository.settings.first()
             val localAvailable = localLlmEngine.isAvailable()
             val ollamaConfigured = settings.isOllamaConfigured()
@@ -646,7 +742,7 @@ class AssistantViewModel @Inject constructor(
                 localAvailable = localAvailable,
                 ollamaConfigured = ollamaConfigured
             )
-            android.util.Log.d("AssistantVM", "Routing: mode=${settings.aiMode} local=$localAvailable ollamaConfigured=$ollamaConfigured → ${decision.mode} (${decision.reason})")
+            Log.d("AssistantVM", "Routing: mode=${settings.aiMode} local=$localAvailable ollamaConfigured=$ollamaConfigured → ${decision.mode} (${decision.reason})")
             // Local models have small context windows (~4K tokens); cap context to fit.
             val context = if (decision.mode == AiMode.LOCAL) fullContext.take(LOCAL_CONTEXT_CHAR_LIMIT) else fullContext
             val localContext = fullContext.take(LOCAL_CONTEXT_CHAR_LIMIT)
@@ -658,16 +754,31 @@ class AssistantViewModel @Inject constructor(
                 }
             )
             val shouldAllowActions = shouldAllowActionSuggestions(question)
-            val ollamaAvailable = ollamaConfigured
-            val response = when (decision.mode) {
-                AiMode.LOCAL -> tryLocalWithOllamaFallback(question, context, fullContext, shouldAllowActions, ollamaAvailable)
+            // Only allow Ollama fallback when the user has explicitly selected AUTO mode
+            val allowOllamaFallback = settings.aiMode == AiMode.AUTO && ollamaConfigured
+            var response = when (decision.mode) {
+                AiMode.LOCAL -> tryLocalWithOllamaFallback(question, context, fullContext, shouldAllowActions, allowOllamaFallback)
                 AiMode.OLLAMA -> when {
                     settings.aiMode == AiMode.AUTO && localAvailable ->
                         tryOllamaWithLocalFallback(question, context, localContext, shouldAllowActions)
                     else -> ollamaRepositoryImpl.answerQuestionStructured(question, context, shouldAllowActions)
                         .getOrElse { AssistantChatResult(reply = "Ollama request failed: ${it.message.orEmpty()}") }
                 }
-                else -> tryLocalWithOllamaFallback(question, context, fullContext, shouldAllowActions, ollamaAvailable)
+                else -> tryLocalWithOllamaFallback(question, context, fullContext, shouldAllowActions, allowOllamaFallback)
+            }
+
+            // The LLM ALWAYS runs first — it gets structured context from RAG retrieval
+            // so even the 0.6B local model has the right data to work with.
+            // The direct answer fallback ONLY fires when the LLM genuinely fails.
+            Log.d("AssistantVM", "LLM responded (${response.reply.length} chars): ${response.reply.take(100)}")
+            val llmProducedAnswer = !isLowQualityResponse(response) && !isGenericApology(response.reply)
+            if (!llmProducedAnswer) {
+                Log.d("AssistantVM", "LLM response insufficient, augmenting with structured data fallback")
+                val directAnswer = directAnswerEngine.tryDirectAnswer(question, relevantItems, tasks, reminders)
+                if (directAnswer != null) {
+                    Log.d("AssistantVM", "Direct answer used as safety net: ${directAnswer.reply.take(80)}")
+                    response = response.copy(reply = directAnswer.reply)
+                }
             }
             var assistantActions = response.actions.mapNotNull { suggestion ->
                 if (!shouldAllowActions) {
@@ -709,7 +820,8 @@ class AssistantViewModel @Inject constructor(
                 responseReferences = response.references,
                 question = question,
                 reply = response.reply,
-                recentItems = recentItems
+                recentItems = recentItems,
+                relevantItems = relevantItems
             )
             val optimisticAssistantMessage = AssistantMessage(
                 id = "local-assistant-${System.currentTimeMillis()}",
@@ -732,7 +844,28 @@ class AssistantViewModel @Inject constructor(
                 actionsJson = serializeActions(assistantActions),
                 referencesJson = serializeReferences(assistantReferences)
             )
+            generateSmartReplies()
         }
+    }
+
+    private fun generateSmartReplies() {
+        viewModelScope.launch {
+            val messages = _state.value.messages.takeLast(6)
+            if (messages.isEmpty()) return@launch
+            val chatMessages = messages.map { msg ->
+                com.charles.pocketassistant.ml.SmartReplyEngine.ChatMessage(
+                    text = msg.text,
+                    timestampMillis = msg.createdAt,
+                    isLocalUser = msg.role == "user"
+                )
+            }
+            val suggestions = smartReplyEngine.suggestReplies(chatMessages)
+            _state.value = _state.value.copy(smartReplies = suggestions)
+        }
+    }
+
+    fun useSmartReply(reply: String) {
+        _state.value = _state.value.copy(input = reply, smartReplies = emptyList())
     }
 
     private fun isLocalModelFailure(reply: String): Boolean =
@@ -750,6 +883,19 @@ class AssistantViewModel @Inject constructor(
         // Generic fallback text from parser
         if (reply.contains("broken format") || reply.contains("could not parse")) return true
         return false
+    }
+
+    private fun isGenericApology(reply: String): Boolean {
+        val lower = reply.lowercase().trim()
+        return lower.contains("i cannot answer") ||
+            lower.contains("i can't answer") ||
+            lower.contains("i don't have enough") ||
+            lower.contains("i do not have enough") ||
+            lower.contains("sorry, i cannot") ||
+            lower.contains("sorry, i can't") ||
+            lower.contains("i'm not able to") ||
+            lower.contains("i am not able to") ||
+            (lower.contains("sorry") && lower.length < 80)
     }
 
     private suspend fun tryLocalWithOllamaFallback(
@@ -881,138 +1027,7 @@ class AssistantViewModel @Inject constructor(
         viewModelScope.launch { persistMessageState(messageId) }
     }
 
-    private suspend fun buildContext(
-        items: List<ItemEntity>,
-        threadMessages: List<ChatMessageEntity>,
-        question: String = ""
-    ): String {
-        val tasks = taskRepository.getOpen(50)
-        val reminders = taskRepository.getUpcomingReminders()
-        val aiResults = aiRepository.getRecentResults(200)
-        // Latest result per item
-        val aiResultsByItemId = mutableMapOf<String, com.charles.pocketassistant.data.db.entity.AiResultEntity>()
-        for (r in aiResults) {
-            if (r.itemId !in aiResultsByItemId) aiResultsByItemId[r.itemId] = r
-        }
-
-        // Score items by relevance to the question
-        val questionWords = question.lowercase().split(Regex("\\W+")).filter { it.length >= 3 }.toSet()
-        data class ScoredItem(
-            val item: ItemEntity,
-            val result: com.charles.pocketassistant.data.db.entity.AiResultEntity?,
-            val score: Int
-        )
-        val scoredItems = items.map { item ->
-            val result = aiResultsByItemId[item.id]
-            val searchable = buildString {
-                append(item.rawText.lowercase())
-                append(" ")
-                append(item.classification.orEmpty().lowercase())
-                append(" ")
-                append(result?.summary.orEmpty().lowercase())
-            }
-            val score = questionWords.count { searchable.contains(it) }
-            ScoredItem(item, result, score)
-        }.sortedByDescending { it.score }
-
-        // ── Budget-based context builder ────────────────────────────────
-        // Each section has a character budget. Never truncate mid-item.
-        val budgetHistory = 1000
-        val budgetItems = 3200
-        val budgetTasks = 800
-        val budgetReminders = 500
-
-        return buildString {
-            // Thread history (compact)
-            if (threadMessages.isNotEmpty()) {
-                var used = 0
-                appendLine("Chat history:")
-                for (msg in threadMessages.takeLast(4)) {
-                    val line = "${msg.role}: ${msg.text.take(250).replace('\n', ' ')}"
-                    if (used + line.length > budgetHistory) break
-                    appendLine(line)
-                    used += line.length
-                }
-                appendLine()
-            }
-
-            // Items — compact format: #id [class] summary or rawText
-            appendLine("Items:")
-            var itemsUsed = 0
-            val maxNonRelevant = 5
-            var nonRelevantCount = 0
-            for (scored in scoredItems) {
-                val isRelevant = scored.score > 0
-                if (!isRelevant) {
-                    nonRelevantCount++
-                    if (nonRelevantCount > maxNonRelevant) continue
-                }
-                val summary = scored.result?.summary
-                    ?.takeIf { !it.trimStart().startsWith("{") && it.isNotBlank() }
-                val line = buildString {
-                    append("#")
-                    append(scored.item.id)
-                    append(" [")
-                    append(scored.item.classification ?: "unknown")
-                    append("] ")
-                    if (isRelevant) {
-                        // Relevant items: summary + key raw text details
-                        if (summary != null) {
-                            append(summary.take(200))
-                        }
-                        // Add raw text for relevant items (may contain details summary missed)
-                        val rawSnippet = scored.item.rawText.take(400).replace('\n', ' ').replace("  ", " ")
-                        append(" | ")
-                        append(rawSnippet)
-                    } else {
-                        // Non-relevant: just the summary, very compact
-                        append(summary?.take(120) ?: scored.item.rawText.take(80).replace('\n', ' '))
-                    }
-                }
-                if (itemsUsed + line.length > budgetItems) break
-                appendLine(line)
-                itemsUsed += line.length
-            }
-            appendLine()
-
-            // Tasks (compact)
-            if (tasks.isNotEmpty()) {
-                appendLine("Tasks:")
-                var tasksUsed = 0
-                for (task in tasks) {
-                    val line = buildString {
-                        append("- ")
-                        append(task.title)
-                        if (!task.details.isNullOrBlank()) {
-                            append(": ")
-                            append(task.details.take(80))
-                        }
-                        if (task.dueAt != null) {
-                            append(" (due ")
-                            append(AssistantDateTimeParser.formatForDisplay(task.dueAt))
-                            append(")")
-                        }
-                    }
-                    if (tasksUsed + line.length > budgetTasks) break
-                    appendLine(line)
-                    tasksUsed += line.length
-                }
-                appendLine()
-            }
-
-            // Reminders (compact)
-            if (reminders.isNotEmpty()) {
-                appendLine("Reminders:")
-                var remindersUsed = 0
-                for (reminder in reminders) {
-                    val line = "- ${reminder.title} at ${AssistantDateTimeParser.formatForDisplay(reminder.remindAt)}"
-                    if (remindersUsed + line.length > budgetReminders) break
-                    appendLine(line)
-                    remindersUsed += line.length
-                }
-            }
-        }.trim()
-    }
+    // Context building is now handled by DirectAnswerEngine.buildStructuredContext()
 
     private fun updateAction(
         messageId: String,
@@ -1072,10 +1087,12 @@ class AssistantViewModel @Inject constructor(
         val normalized = question.lowercase().trim()
         // Questions asking FOR information should never auto-create things
         val infoPatterns = listOf(
-            "^what\\b", "^when\\b", "^where\\b", "^who\\b", "^how\\b",
+            "^what'?s?\\b", "^when'?s?\\b", "^where'?s?\\b", "^who'?s?\\b", "^how\\b",
+            "^whens\\b", "^wheres\\b", "^whos\\b", "^whats\\b",
             "^tell me\\b", "^show me\\b", "^list\\b", "^do i\\b",
             "^is (?:there|my|the)\\b", "^are (?:there|my|the)\\b",
-            "^any\\b", "^which\\b", "^can you (?:tell|show|check|look)\\b"
+            "^any\\b", "^which\\b", "^can you (?:tell|show|check|look)\\b",
+            "\\bwhen is\\b", "\\bwhen'?s\\b", "\\bhow much\\b"
         )
         if (infoPatterns.any { Regex(it).containsMatchIn(normalized) }) return false
 
@@ -1465,12 +1482,15 @@ class AssistantViewModel @Inject constructor(
         )
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun resolveAssistantReferences(
         responseReferences: List<AssistantItemReference>,
         question: String,
         reply: String,
-        recentItems: List<ItemEntity>
+        recentItems: List<ItemEntity>,
+        relevantItems: List<com.charles.pocketassistant.ai.RelevantItem> = emptyList()
     ): List<AssistantReferenceUi> {
+        // 1. Explicit references from the LLM response (by item ID)
         val explicit = responseReferences.mapNotNull { reference ->
             val matched = recentItems.firstOrNull { it.id == reference.itemId } ?: return@mapNotNull null
             AssistantReferenceUi(
@@ -1480,18 +1500,13 @@ class AssistantViewModel @Inject constructor(
         }
         if (explicit.isNotEmpty()) return explicit
 
-        val combined = "$question $reply".lowercase()
-        val preferredClassification = when {
-            combined.contains("bill") || combined.contains("payment") || combined.contains("due") -> "bill"
-            combined.contains("appointment") || combined.contains("meeting") || combined.contains("calendar") || combined.contains("visit") -> "appointment"
-            combined.contains("message") || combined.contains("email") || combined.contains("text") -> "message"
-            combined.contains("note") -> "note"
-            else -> null
+        // 2. Use semantically matched items from RAG retrieval (much more accurate)
+        val topRelevant = relevantItems.firstOrNull { it.relevanceScore > 0.15f }
+        if (topRelevant != null) {
+            return listOf(AssistantReferenceUi(topRelevant.item.id, defaultReferenceLabel(topRelevant.item)))
         }
-        val inferredItem = preferredClassification?.let { classification ->
-            recentItems.firstOrNull { it.classification == classification }
-        }
-        return inferredItem?.let { listOf(AssistantReferenceUi(it.id, defaultReferenceLabel(it))) } ?: emptyList()
+
+        return emptyList()
     }
 
 
@@ -1550,6 +1565,14 @@ class ItemDetailViewModel @Inject constructor(
     }
 
     fun clearCalendarStatus() { _calendarStatus.value = "" }
+
+    private val _deleted = MutableStateFlow(false)
+    val deleted: StateFlow<Boolean> = _deleted
+
+    fun deleteItem(itemId: String) = viewModelScope.launch {
+        itemRepository.delete(itemId)
+        _deleted.value = true
+    }
 
     fun rerunLocal(itemId: String, rawText: String, sourceType: String) = viewModelScope.launch {
         Log.d("ItemDetailVM", "rerunLocal: itemId=$itemId textLen=${rawText.length} type=$sourceType")
@@ -1839,5 +1862,126 @@ class SettingsViewModel @Inject constructor(
     }
     fun clearLocalData() = viewModelScope.launch {
         dataToolsState.value = dataMaintenanceRepository.clearAllLocalData()
+    }
+}
+
+data class HandwritingUiState(
+    val recognizedText: String = "",
+    val recognizing: Boolean = false,
+    val error: String = ""
+)
+
+@HiltViewModel
+class HandwritingViewModel @Inject constructor(
+    private val digitalInkEngine: com.charles.pocketassistant.ml.DigitalInkEngine
+) : ViewModel() {
+    private val _state = MutableStateFlow(HandwritingUiState())
+    val state: StateFlow<HandwritingUiState> = _state
+
+    private val collectedStrokes = mutableListOf<com.google.mlkit.vision.digitalink.Ink.Stroke>()
+
+    fun addStroke(points: List<androidx.compose.ui.geometry.Offset>) {
+        val strokeBuilder = com.google.mlkit.vision.digitalink.Ink.Stroke.builder()
+        val baseTime = System.currentTimeMillis()
+        for ((i, point) in points.withIndex()) {
+            strokeBuilder.addPoint(
+                com.google.mlkit.vision.digitalink.Ink.Point.create(
+                    point.x, point.y, baseTime + i
+                )
+            )
+        }
+        collectedStrokes.add(strokeBuilder.build())
+    }
+
+    fun clearStrokes() {
+        collectedStrokes.clear()
+        _state.value = HandwritingUiState()
+    }
+
+    fun recognize() {
+        if (collectedStrokes.isEmpty()) return
+        _state.value = _state.value.copy(recognizing = true, error = "")
+        viewModelScope.launch {
+            runCatching {
+                val inkBuilder = com.google.mlkit.vision.digitalink.Ink.builder()
+                for (stroke in collectedStrokes) inkBuilder.addStroke(stroke)
+                digitalInkEngine.recognize(inkBuilder.build())
+            }.onSuccess { text ->
+                _state.value = _state.value.copy(
+                    recognizedText = text,
+                    recognizing = false,
+                    error = if (text.isBlank()) "Could not recognize handwriting." else ""
+                )
+            }.onFailure { e ->
+                _state.value = _state.value.copy(
+                    recognizing = false,
+                    error = e.message ?: "Recognition failed."
+                )
+            }
+        }
+    }
+}
+
+// ── Rewards ─────────────────────────────────────────────────────────
+
+data class RewardTier(
+    val credits: Int,
+    val hours: Int,
+    val label: String
+)
+
+@HiltViewModel
+class RewardsViewModel @Inject constructor(
+    private val settingsRepository: SettingsRepository,
+    val adManager: AdManager
+) : ViewModel() {
+
+    companion object {
+        val TIERS = listOf(
+            RewardTier(1, 1, "1 hour"),
+            RewardTier(3, 3, "3 hours"),
+            RewardTier(6, 6, "6 hours")
+        )
+    }
+
+    val settings = settingsRepository.settings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.charles.pocketassistant.data.datastore.UserSettings())
+
+    val rewardedReady = adManager.rewardedReady
+
+    private val _snackbar = MutableStateFlow("")
+    val snackbar: StateFlow<String> = _snackbar
+
+    fun clearSnackbar() { _snackbar.value = "" }
+
+    fun onRewardEarned() {
+        viewModelScope.launch {
+            settingsRepository.update { it.copy(rewardCredits = it.rewardCredits + 1) }
+            _snackbar.value = "You earned 1 credit!"
+        }
+    }
+
+    fun redeemTier(tier: RewardTier) {
+        viewModelScope.launch {
+            val current = settings.value
+            if (current.rewardCredits < tier.credits) {
+                _snackbar.value = "Not enough credits"
+                return@launch
+            }
+            val now = System.currentTimeMillis()
+            val currentEnd = if (current.adFreeUntil > now) current.adFreeUntil else now
+            val newEnd = currentEnd + tier.hours * 3_600_000L
+            settingsRepository.update {
+                it.copy(
+                    rewardCredits = it.rewardCredits - tier.credits,
+                    adFreeUntil = newEnd
+                )
+            }
+            _snackbar.value = "Ads disabled for ${tier.label}!"
+        }
+    }
+
+    fun retryLoadRewarded() {
+        adManager.loadRewarded()
     }
 }

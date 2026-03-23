@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,14 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
 }
+
+val localProps = Properties()
+rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { localProps.load(it) }
+val adsEnabled = localProps.getProperty("ADS_ENABLED", "false").toBoolean()
+val admobAppId = localProps.getProperty("ADMOB_APP_ID", "")
+val admobBannerId = localProps.getProperty("ADMOB_BANNER_ID", "")
+val admobInterstitialId = localProps.getProperty("ADMOB_INTERSTITIAL_ID", "")
+val admobRewardedId = localProps.getProperty("ADMOB_REWARDED_ID", "")
 
 android {
     namespace = "com.charles.pocketassistant"
@@ -20,6 +30,12 @@ android {
 
         testInstrumentationRunner = "com.charles.pocketassistant.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
+
+        buildConfigField("boolean", "ADS_ENABLED", "$adsEnabled")
+        buildConfigField("String", "ADMOB_BANNER_ID", "\"$admobBannerId\"")
+        buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"$admobInterstitialId\"")
+        buildConfigField("String", "ADMOB_REWARDED_ID", "\"$admobRewardedId\"")
+        manifestPlaceholders["admobAppId"] = if (adsEnabled && admobAppId.isNotBlank()) admobAppId else "ca-app-pub-3940256099942544~3347511713"
     }
 
     buildTypes {
@@ -94,6 +110,15 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.mlkit.text.recognition)
     implementation(libs.mlkit.entity.extraction)
+    implementation(libs.mlkit.language.id)
+    implementation(libs.mlkit.smart.reply)
+    implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.mlkit.translate)
+    implementation(libs.mlkit.digital.ink)
+    implementation(libs.mlkit.document.scanner)
+    implementation(libs.mediapipe.tasks.text)
+    implementation(libs.google.aicore)
+    implementation(libs.google.gms.ads)
     implementation(files("libs/litertlm-android-0.8.0-classes.jar"))
 
     testImplementation(libs.junit)

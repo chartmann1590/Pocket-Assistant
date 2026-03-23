@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Draw
+import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Shield
@@ -50,6 +52,8 @@ fun ImportScreen(
     onCamera: () -> Unit,
     onGallery: () -> Unit,
     onFile: () -> Unit,
+    onScan: () -> Unit,
+    onHandwrite: () -> Unit,
     onPaste: (String) -> Unit
 ) {
     var pastedText by rememberSaveable { mutableStateOf("") }
@@ -104,6 +108,26 @@ fun ImportScreen(
                     modifier = Modifier.weight(1f),
                     onClick = onFile
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SourceCard(
+                    title = "Scan",
+                    subtitle = "Document",
+                    icon = Icons.Outlined.DocumentScanner,
+                    modifier = Modifier.weight(1f),
+                    onClick = onScan
+                )
+                SourceCard(
+                    title = "Handwrite",
+                    subtitle = "Draw text",
+                    icon = Icons.Outlined.Draw,
+                    modifier = Modifier.weight(1f),
+                    onClick = onHandwrite
+                )
+                Spacer(Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(4.dp))

@@ -4,20 +4,48 @@ Pocket Assistant is a **local-first Android** app that turns screenshots, photos
 
 ## Requirements
 
-- **Android Studio** (recent stable) or Android SDK command-line tools  
-- **JDK 17** (matches `compileOptions` / `jvmTarget` in the app module)  
-- **Android SDK** with **API 35** for compile/target  
+- **Android Studio** (recent stable) or Android SDK command-line tools
+- **JDK 17** (matches `compileOptions` / `jvmTarget` in the app module)
+- **Android SDK** with **API 35** for compile/target
 - **minSdk 26** for running on devices
 
 Machine-specific SDK paths belong in `local.properties` (create at the repo root if Android Studio has not already). Do not commit secrets or tokens; use in-app settings for Ollama URLs and optional API tokens.
 
 ## Features (high level)
 
-- Import via share intent or in-app flow; **ML Kit** text recognition for images; PDF text extraction with a **five-page** cap for performance  
-- **Room** persistence for items, AI results, tasks, reminders, and **chat** threads/messages (schema v2)  
-- **DataStore** for preferences and AI routing (local / Ollama / auto)  
-- **Downloadable LiteRT-LM** models (see `ModelConfig.kt`) with **WorkManager** (`ModelDownloadWorker`) and download progress  
-- Optional **Ollama** over HTTP when a base URL and model name are configured  
+- Import via share intent or in-app flow; **ML Kit** text recognition for images; PDF text extraction with a **five-page** cap for performance
+- **Room** persistence for items, AI results, tasks, reminders, and **chat** threads/messages (schema v2)
+- **DataStore** for preferences and AI routing (local / Ollama / auto)
+- **Downloadable LiteRT-LM** models (see `ModelConfig.kt`) with **WorkManager** (`ModelDownloadWorker`) and download progress
+- Optional **Ollama** over HTTP when a base URL and model name are configured
+- **Neural semantic search** via MediaPipe Universal Sentence Encoder for natural language item retrieval
+- **RAG-style assistant** — semantic search finds relevant items, builds structured context for the LLM, with direct-answer fallback
+- **Item deletion** with cascade cleanup of related AI results, tasks, and reminders
+- **AdMob integration** (banner, interstitial, and rewarded ads) with a credit-based ad-free reward system
+
+## Ads & Building from Source
+
+This app includes **Google AdMob** ads when published. If you build from source, **ads are disabled by default**.
+
+### Setup
+
+1. Copy `local.properties.template` to `local.properties`
+2. Set `ADS_ENABLED=false` (default) to build ad-free, or `ADS_ENABLED=true` with your own AdMob IDs to enable ads
+3. Build normally with `./gradlew assembleDebug`
+
+The template file documents all available ad configuration fields. Your `local.properties` is gitignored and never committed.
+
+### Reward System
+
+When ads are enabled, users can watch rewarded video ads to earn credits and redeem them for ad-free time:
+
+| Credits | Ad-Free Time |
+|---------|-------------|
+| 1 | 1 hour |
+| 3 | 3 hours |
+| 6 | 6 hours |
+
+Credits never expire. Ad-free time stacks when redeemed while already active. Access the rewards screen via the star icon on the home screen.
 
 ## Project layout
 
@@ -29,7 +57,9 @@ Single Gradle module `:app` (Kotlin DSL). Main code lives under:
 |------|------|
 | `ui/` | Compose screens, ViewModels, navigation |
 | `data/` | Room, repositories, DataStore, Retrofit |
-| `ai/` | Routing, local engine, Ollama client, prompts, JSON parsing |
+| `ai/` | Routing, local engine, Ollama client, prompts, JSON parsing, RAG |
+| `ads/` | AdMob integration (banner, interstitial, rewarded), ad manager |
+| `ml/` | ML Kit engines, neural embeddings, semantic search, text classification |
 | `ocr/` | ML Kit + PDF rendering |
 | `worker/` | Model download worker |
 | `di/` | Hilt modules |
@@ -71,7 +101,7 @@ Or open the folder in Android Studio, sync Gradle, and use **Run**.
 
 ## Local models
 
-Model IDs, sizes, and Hugging Face–related settings are centralized in:
+Model IDs, sizes, and Hugging Face-related settings are centralized in:
 
 `app/src/main/java/com/charles/pocketassistant/ai/local/ModelConfig.kt`
 
@@ -79,24 +109,24 @@ Onboarding and settings can download, delete, or re-download the selected artifa
 
 ## Ollama
 
-1. In onboarding or settings, set the **base URL** (e.g. `http://192.168.1.50:11434/`).  
-2. If your proxy requires it, set an **API token** (sent as `Authorization: Bearer …`).  
-3. Set the **model name** as exposed by your Ollama instance.  
+1. In onboarding or settings, set the **base URL** (e.g. `http://192.168.1.50:11434/`).
+2. If your proxy requires it, set an **API token** (sent as `Authorization: Bearer …`).
+3. Set the **model name** as exposed by your Ollama instance.
 4. Use the in-app connection test before relying on Ollama-only or auto routing.
 
-Routing is implemented in `AiRouter`: short text with a local model available may use **local** inference; longer content or PDFs may prefer **Ollama** when configured, with sensible fallback.
+Routing is implemented in `AiRouter`: LOCAL mode stays strictly local (no Ollama fallback). OLLAMA mode uses only the remote server. AUTO mode tries Ollama first and falls back to local when unreachable.
 
 ## Permissions (summary)
 
-- `INTERNET` — model downloads and optional Ollama  
-- `ACCESS_NETWORK_STATE` — network-aware downloads  
-- `POST_NOTIFICATIONS` — reminders on Android 13+  
+- `INTERNET` — model downloads, optional Ollama, and ads
+- `ACCESS_NETWORK_STATE` — network-aware downloads
+- `POST_NOTIFICATIONS` — reminders on Android 13+
 - Foreground service types used for resilient model download notifications (see manifest)
 
 ## Limitations
 
-- Local LLM behavior depends on the bundled LiteRT/MediaPipe runtime and the downloaded model.  
-- PDF OCR is capped at **five pages**.  
+- Local LLM behavior depends on the bundled LiteRT/MediaPipe runtime and the downloaded model.
+- PDF OCR is capped at **five pages**.
 - Reminders use local scheduling; there is no calendar sync in the current MVP.
 
 ## Contributing and conventions

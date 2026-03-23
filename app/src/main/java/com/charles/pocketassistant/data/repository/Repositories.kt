@@ -27,7 +27,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
 @Singleton
-class ItemRepository @Inject constructor(private val itemDao: ItemDao) {
+class ItemRepository @Inject constructor(
+    private val itemDao: ItemDao,
+    private val taskDao: TaskDao,
+    private val reminderDao: ReminderDao
+) {
     fun observeItems(): Flow<List<ItemEntity>> = itemDao.observeAll()
     fun observeById(id: String) = itemDao.observeById(id)
     fun observeByClassification(classification: String) = itemDao.observeByClassification(classification)
@@ -36,6 +40,12 @@ class ItemRepository @Inject constructor(private val itemDao: ItemDao) {
     suspend fun insert(item: ItemEntity) = itemDao.upsert(item)
     suspend fun updateClassification(id: String, classification: String) =
         itemDao.updateClassification(id, classification)
+
+    suspend fun delete(id: String) {
+        taskDao.deleteByItemId(id)
+        reminderDao.deleteByItemId(id)
+        itemDao.delete(id) // ai_results cascade-deleted via ForeignKey
+    }
 }
 
 @Singleton
@@ -146,7 +156,11 @@ class AiRepository @Inject constructor(
     private val ollamaRepositoryImpl: OllamaRepositoryImpl,
     private val aiResultDao: AiResultDao,
     private val parser: AiJsonParser,
-    private val entityExtractionEngine: com.charles.pocketassistant.ml.EntityExtractionEngine
+    private val entityExtractionEngine: com.charles.pocketassistant.ml.EntityExtractionEngine,
+    private val languageDetector: com.charles.pocketassistant.ml.LanguageDetector,
+    private val textClassifier: com.charles.pocketassistant.ml.TextClassifier,
+    private val translationEngine: com.charles.pocketassistant.ml.TranslationEngine,
+    private val geminiNanoEngine: com.charles.pocketassistant.ai.nano.GeminiNanoEngine
 ) {
     private val router = AiRouter()
 
@@ -198,20 +212,45 @@ class AiRepository @Inject constructor(
         sourceType: String = "text"
     ): AiExtractionResult {
         val settings = settingsStore.settings.first()
-        // Run ML Kit entity extraction in parallel (instant, ~50ms)
-        val mlEntities = entityExtractionEngine.extract(text)
+
+        // Step 1: Detect language (~10ms) and translate if non-English
+        val detectedLang = languageDetector.identifyLanguage(text)
+        val processText = if (!languageDetector.isEnglish(detectedLang) && detectedLang != "und") {
+            translationEngine.translate(text, detectedLang, "en")
+        } else {
+            text
+        }
+
+        // Step 2: Fast classification (~1ms) — instant result before LLM
+        val fastClass = textClassifier.classify(processText)
+
+        // Step 3: ML Kit entity extraction in parallel (instant, ~50ms)
+        val mlEntities = entityExtractionEngine.extract(processText)
+
+        // Step 4: LLM inference — try Gemini Nano first for LOCAL mode (highest quality on-device)
         val llmResult = when (mode) {
-            AiMode.LOCAL -> localLlmEngine.summarizeAndExtract(text)
-            AiMode.OLLAMA -> ollamaRepositoryImpl.summarizeAndExtract(text)
+            AiMode.LOCAL -> {
+                val nanoResult = tryGeminiNano(processText)
+                nanoResult ?: localLlmEngine.summarizeAndExtract(processText)
+            }
+            AiMode.OLLAMA -> ollamaRepositoryImpl.summarizeAndExtract(processText)
                 .getOrElse { parser.parseOrFallback(it.message ?: "Ollama request failed.") }
             AiMode.AUTO -> run(itemId, text, sourceType)
         }
-        // Backfill any entities the LLM missed with ML Kit's reliable extraction
-        val result = entityExtractionEngine.backfillEntities(llmResult, mlEntities)
+
+        // Step 5: Use fast classification as fallback if LLM returned "unknown"
+        val usedNano = mode == AiMode.LOCAL && geminiNanoEngine.available.value == true
+        var merged = llmResult
+        if (merged.classification == "unknown" && fastClass.confidence > 0.3f) {
+            merged = merged.copy(classification = fastClass.classification)
+        }
+
+        // Step 6: Backfill entities the LLM missed with ML Kit's reliable extraction
+        val result = entityExtractionEngine.backfillEntities(merged, mlEntities)
         persistResult(
             itemId = itemId,
-            modeUsed = mode.name.lowercase(),
-            modelName = if (mode == AiMode.OLLAMA) settings.ollamaModelName else settings.localModelVersion,
+            modeUsed = if (usedNano) "gemini_nano" else mode.name.lowercase(),
+            modelName = if (usedNano) "gemini-nano" else if (mode == AiMode.OLLAMA) settings.ollamaModelName else settings.localModelVersion,
             result = result
         )
         return result
@@ -237,6 +276,20 @@ class AiRepository @Inject constructor(
 
     fun observeLatest(itemId: String) = aiResultDao.observeLatestForItem(itemId)
     suspend fun getRecentResults(limit: Int = 10) = aiResultDao.getRecent(limit)
+
+    /**
+     * Try Gemini Nano for summarization. Returns null if unavailable or failed.
+     * Gemini Nano (Pixel 8+) is higher quality than the bundled LiteRT models.
+     */
+    private suspend fun tryGeminiNano(text: String): AiExtractionResult? {
+        if (!geminiNanoEngine.isAvailable()) return null
+        return try {
+            val nanoSummary = geminiNanoEngine.summarize(text) ?: return null
+            parser.parseOrFallback(nanoSummary)
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     private suspend fun persistResult(
         itemId: String,

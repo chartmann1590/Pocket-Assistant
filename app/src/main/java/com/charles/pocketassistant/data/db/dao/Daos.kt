@@ -37,6 +37,9 @@ interface ItemDao {
 
     @Query("SELECT * FROM items WHERE rawText LIKE '%' || :query || '%' OR classification LIKE '%' || :query || '%' ORDER BY createdAt DESC")
     fun search(query: String): Flow<List<ItemEntity>>
+
+    @Query("DELETE FROM items WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao
@@ -49,6 +52,9 @@ interface AiResultDao {
 
     @Query("SELECT * FROM ai_results ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getRecent(limit: Int): List<AiResultEntity>
+
+    @Query("DELETE FROM ai_results WHERE itemId = :itemId")
+    suspend fun deleteByItemId(itemId: String)
 }
 
 @Dao
@@ -73,6 +79,9 @@ interface TaskDao {
 
     @Query("UPDATE tasks SET isDone = :isDone WHERE id = :taskId")
     suspend fun setDone(taskId: String, isDone: Boolean)
+
+    @Query("DELETE FROM tasks WHERE itemId = :itemId")
+    suspend fun deleteByItemId(itemId: String)
 }
 
 @Dao
@@ -85,6 +94,9 @@ interface ReminderDao {
 
     @Query("SELECT * FROM reminders WHERE remindAt >= :from ORDER BY remindAt ASC LIMIT :limit")
     suspend fun getUpcoming(from: Long, limit: Int): List<ReminderEntity>
+
+    @Query("DELETE FROM reminders WHERE itemId = :itemId")
+    suspend fun deleteByItemId(itemId: String)
 }
 
 @Dao

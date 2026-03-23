@@ -20,6 +20,15 @@ gson = "2.10.1"
 coil = "2.7.0"
 mlkitText = "16.0.1"
 mlkitEntityExtraction = "16.0.0-beta5"
+mlkitLanguageId = "17.0.6"
+mlkitSmartReply = "17.0.4"
+mlkitBarcode = "17.3.0"
+mlkitTranslate = "17.0.3"
+mlkitDigitalInk = "18.1.0"
+mlkitDocScanner = "16.0.0-beta1"
+mediapipeText = "0.10.21"
+aicore = "0.0.1-exp02"
+gmsAds = "23.6.0"
 coroutines = "1.8.1"
 ksp = "1.9.24-1.0.20"
 litertlm = "0.8.0"
@@ -64,7 +73,16 @@ gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitText" }
 mlkit-entity-extraction = { group = "com.google.mlkit", name = "entity-extraction", version.ref = "mlkitEntityExtraction" }
+mlkit-language-id = { group = "com.google.mlkit", name = "language-id", version.ref = "mlkitLanguageId" }
+mlkit-smart-reply = { group = "com.google.mlkit", name = "smart-reply", version.ref = "mlkitSmartReply" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+mlkit-translate = { group = "com.google.mlkit", name = "translate", version.ref = "mlkitTranslate" }
+mlkit-digital-ink = { group = "com.google.mlkit", name = "digital-ink-recognition", version.ref = "mlkitDigitalInk" }
+mlkit-document-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "mlkitDocScanner" }
+mediapipe-tasks-text = { group = "com.google.mediapipe", name = "tasks-text", version.ref = "mediapipeText" }
+google-aicore = { group = "com.google.ai.edge.aicore", name = "aicore", version.ref = "aicore" }
 google-litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }
+google-gms-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "gmsAds" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 

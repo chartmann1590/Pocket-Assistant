@@ -1,6 +1,5 @@
 package com.charles.pocketassistant.ui.home
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,15 +23,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.ContentPaste
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Inbox
-import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -79,13 +74,12 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     nav: NavHostController,
-    pickImage: () -> Unit,
-    pickPdf: () -> Unit,
     importViewModel: ImportViewModel,
     homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     val items by homeViewModel.items.collectAsState()
     val summaries by homeViewModel.summaries.collectAsState()
+    val priorityScores by homeViewModel.priorityScores.collectAsState()
     val processing by importViewModel.processing.collectAsState()
     val searchQuery by homeViewModel.searchQuery.collectAsState()
     val searchResults by homeViewModel.searchResults.collectAsState()
@@ -112,6 +106,14 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    if (com.charles.pocketassistant.BuildConfig.ADS_ENABLED) {
+                        IconButton(onClick = { nav.navigate("rewards") }) {
+                            Icon(Icons.Outlined.Star, contentDescription = "Rewards")
+                        }
+                    }
+                    IconButton(onClick = { nav.navigate("tasks") }) {
+                        Icon(Icons.Outlined.TaskAlt, contentDescription = "Tasks")
+                    }
                     IconButton(onClick = { nav.navigate("assistant") }) {
                         Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Assistant")
                     }
@@ -140,39 +142,9 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        "Quick actions",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        QuickActionCard("Photo", Icons.Outlined.CameraAlt, Modifier.weight(1f), onClick = pickImage)
-                        QuickActionCard("Gallery", Icons.Outlined.PhotoLibrary, Modifier.weight(1f), onClick = pickImage)
-                        QuickActionCard("PDF", Icons.Outlined.Description, Modifier.weight(1f), onClick = pickPdf)
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        QuickActionCard("Paste", Icons.Outlined.ContentPaste, Modifier.weight(1f), onClick = { nav.navigate("import") })
-                        QuickActionCard("Tasks", Icons.Outlined.TaskAlt, Modifier.weight(1f), onClick = { nav.navigate("tasks") })
-                        QuickActionCard("Ask AI", Icons.Outlined.ChatBubbleOutline, Modifier.weight(1f), onClick = { nav.navigate("assistant") })
-                    }
-                }
-            }
-
             // Search bar
             item {
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { homeViewModel.setSearchQuery(it) },
@@ -253,6 +225,7 @@ fun HomeScreen(
                     ItemCard(
                         item = item,
                         summary = summaries[item.id],
+                        priorityScore = priorityScores[item.id],
                         onClick = { nav.navigate("detail/${item.id}") },
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                     )
@@ -286,51 +259,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun QuickActionCard(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Text(
-                title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-private fun ItemCard(item: ItemEntity, summary: String? = null, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ItemCard(item: ItemEntity, summary: String? = null, priorityScore: Float? = null, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val ext = LocalExtendedColors.current
     val classColor = when (item.classification) {
         "bill" -> ext.bill
@@ -373,6 +302,21 @@ private fun ItemCard(item: ItemEntity, summary: String? = null, onClick: () -> U
                         fontWeight = FontWeight.SemiBold,
                         color = classColor
                     )
+                    if (priorityScore != null && priorityScore > 0.5f) {
+                        val urgencyLabel = if (priorityScore > 0.7f) "Urgent" else "High"
+                        val urgencyColor = if (priorityScore > 0.7f) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.tertiary
+                        Text(
+                            urgencyLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = urgencyColor,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(urgencyColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
                 Text(
                     formatRelativeTime(item.createdAt),

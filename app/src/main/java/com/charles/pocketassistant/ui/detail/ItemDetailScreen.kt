@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.DocumentScanner
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -88,9 +91,15 @@ fun ItemDetailScreen(
     val latestResult by vm.observeLatestResult(itemId).collectAsState(initial = null)
     val rerunning by vm.rerunning.collectAsState()
     val calendarStatus by vm.calendarStatus.collectAsState()
+    val deleted by vm.deleted.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var pendingCalendarAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(deleted) {
+        if (deleted) nav.popBackStack()
+    }
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -159,6 +168,15 @@ fun ItemDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = "Delete item",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             )
@@ -505,6 +523,26 @@ fun ItemDetailScreen(
             }
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete item?") },
+            text = { Text("This will permanently delete this item and all its associated tasks, reminders, and AI results.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        vm.deleteItem(itemId)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
