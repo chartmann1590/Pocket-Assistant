@@ -46,3 +46,9 @@ settings.preferences_pb
 /litertlm-*.zip
 /litertlm-*.module
 /litertlm-metadata.xml
+
+# Internal project docs (keep locally, not on GitHub)
+CLAUDE.md
+AGENTS.md
+mvp.md
+additional_ml.md

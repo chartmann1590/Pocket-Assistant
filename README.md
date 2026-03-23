@@ -1,43 +1,62 @@
 # Pocket Assistant
 
-Pocket Assistant is a **local-first Android** app that turns screenshots, photos, PDFs, and shared text into summaries, structured extractions, tasks, and reminders. OCR and optional on-device LLM inference stay on the device unless you configure **Ollama** and choose a remote or hybrid routing mode. There is no vendor-hosted backend for core features.
+**Local-first AI organizer for Android** — turn screenshots, photos, PDFs, and shared text into summaries, tasks, and reminders. OCR and on-device LLM inference stay on your phone unless you configure an [Ollama](https://ollama.ai) server. No vendor-hosted backend for core features.
+
+<p align="center">
+  <img src="screenshots/device/screen.png" alt="Home screen" width="230">&nbsp;&nbsp;
+  <img src="screenshots/device/detail3.png" alt="Tasks" width="230">&nbsp;&nbsp;
+  <img src="screenshot_assistant.png" alt="AI Assistant" width="230">
+</p>
+
+## Features
+
+- **Smart OCR** — ML Kit text recognition for images; PDF extraction (up to 5 pages)
+- **On-device LLM** — three downloadable models (Qwen3 0.6B, Qwen2.5 1.5B, Gemma 3n) via LiteRT, no internet needed
+- **Neural semantic search** — MediaPipe Universal Sentence Encoder for natural language queries
+- **RAG assistant** — ask questions about your saved items; semantic search finds context, LLM generates answers
+- **Auto-extraction** — AI categorizes items as Bills, Messages, Appointments, or Notes and pulls out dates, amounts, and contacts
+- **Tasks & reminders** — extracted tasks with due dates and local reminder scheduling
+- **Optional Ollama** — connect to a self-hosted Ollama server for more powerful models; AUTO mode tries remote first, falls back to local
+- **Privacy by design** — no cloud backend, no telemetry; everything runs offline
+
+<p align="center">
+  <img src="screenshots/automation/pocket_assistant_screen.png" alt="Item categories" width="230">&nbsp;&nbsp;
+  <img src="screenshots/automation/pocket_settings2.png" alt="AI settings" width="230">&nbsp;&nbsp;
+  <img src="screenshots/automation/assistant_screen.png" alt="Assistant" width="230">
+</p>
 
 ## Requirements
 
 - **Android Studio** (recent stable) or Android SDK command-line tools
-- **JDK 17** (matches `compileOptions` / `jvmTarget` in the app module)
+- **JDK 17** (matches `compileOptions` / `jvmTarget`)
 - **Android SDK** with **API 35** for compile/target
 - **minSdk 26** for running on devices
 
-Machine-specific SDK paths belong in `local.properties` (create at the repo root if Android Studio has not already). Do not commit secrets or tokens; use in-app settings for Ollama URLs and optional API tokens.
+Machine-specific SDK paths belong in `local.properties`. Do not commit secrets or tokens; use in-app settings for Ollama URLs and optional API tokens.
 
-## Features (high level)
+## Build and Run
 
-- Import via share intent or in-app flow; **ML Kit** text recognition for images; PDF text extraction with a **five-page** cap for performance
-- **Room** persistence for items, AI results, tasks, reminders, and **chat** threads/messages (schema v2)
-- **DataStore** for preferences and AI routing (local / Ollama / auto)
-- **Downloadable LiteRT-LM** models (see `ModelConfig.kt`) with **WorkManager** (`ModelDownloadWorker`) and download progress
-- Optional **Ollama** over HTTP when a base URL and model name are configured
-- **Neural semantic search** via MediaPipe Universal Sentence Encoder for natural language item retrieval
-- **RAG-style assistant** — semantic search finds relevant items, builds structured context for the LLM, with direct-answer fallback
-- **Item deletion** with cascade cleanup of related AI results, tasks, and reminders
-- **AdMob integration** (banner, interstitial, and rewarded ads) with a credit-based ad-free reward system
+| Action | Unix / macOS | Windows |
+|--------|-------------|---------|
+| Debug APK | `./gradlew assembleDebug` | `.\gradlew.bat assembleDebug` |
+| Install debug | `./gradlew installDebug` | `.\gradlew.bat installDebug` |
+| Unit tests | `./gradlew testDebugUnitTest` | `.\gradlew.bat testDebugUnitTest` |
+| Instrumented tests | `./gradlew connectedDebugAndroidTest` | `.\gradlew.bat connectedDebugAndroidTest` |
+| Lint | `./gradlew lintDebug` | `.\gradlew.bat lintDebug` |
+
+Or open in Android Studio, sync Gradle, and use **Run**.
 
 ## Ads & Building from Source
 
 This app includes **Google AdMob** ads when published. If you build from source, **ads are disabled by default**.
 
-### Setup
-
 1. Copy `local.properties.template` to `local.properties`
-2. Set `ADS_ENABLED=false` (default) to build ad-free, or `ADS_ENABLED=true` with your own AdMob IDs to enable ads
+2. Set `ADS_ENABLED=false` (default) to build ad-free, or `ADS_ENABLED=true` with your own AdMob IDs
 3. Build normally with `./gradlew assembleDebug`
-
-The template file documents all available ad configuration fields. Your `local.properties` is gitignored and never committed.
 
 ### Reward System
 
-When ads are enabled, users can watch rewarded video ads to earn credits and redeem them for ad-free time:
+When ads are enabled, users can watch rewarded video ads for ad-free credits:
 
 | Credits | Ad-Free Time |
 |---------|-------------|
@@ -45,93 +64,50 @@ When ads are enabled, users can watch rewarded video ads to earn credits and red
 | 3 | 3 hours |
 | 6 | 6 hours |
 
-Credits never expire. Ad-free time stacks when redeemed while already active. Access the rewards screen via the star icon on the home screen.
+Credits never expire. Ad-free time stacks.
 
-## Project layout
+## Project Layout
 
-Single Gradle module `:app` (Kotlin DSL). Main code lives under:
-
-`app/src/main/java/com/charles/pocketassistant/`
+Single Gradle module `:app` (Kotlin DSL). Main code under `app/src/main/java/com/charles/pocketassistant/`:
 
 | Area | Role |
 |------|------|
 | `ui/` | Compose screens, ViewModels, navigation |
 | `data/` | Room, repositories, DataStore, Retrofit |
 | `ai/` | Routing, local engine, Ollama client, prompts, JSON parsing, RAG |
-| `ads/` | AdMob integration (banner, interstitial, rewarded), ad manager |
-| `ml/` | ML Kit engines, neural embeddings, semantic search, text classification |
+| `ads/` | AdMob integration (banner, interstitial, rewarded) |
+| `ml/` | ML Kit engines, neural embeddings, semantic search |
 | `ocr/` | ML Kit + PDF rendering |
 | `worker/` | Model download worker |
 | `di/` | Hilt modules |
 | `domain/` | Shared domain models |
 | `util/` | Reminders, date parsing, helpers |
 
-Resources and manifest: `app/src/main/res/`, `app/src/main/AndroidManifest.xml`. Version catalog: `gradle/libs.versions.toml`. LiteRT-LM JAR: `app/libs/` (see app `build.gradle.kts`).
+## Local Models
 
-## Screenshots
+Model IDs, sizes, and Hugging Face settings are in `ModelConfig.kt`. Three options:
 
-Device and UI reference captures live under **`screenshots/`** at the repo root (not under `app/src`):
-
-| Path | Contents |
-|------|----------|
-| `screenshots/device/` | Hand-captured device screens (home, detail, scroll states, etc.) |
-| `screenshots/automation/` | Saved frames from emulator/automation runs (debugging and regression context) |
-
-Add new marketing or documentation images under `screenshots/device/` with clear names. Prefer keeping transient automation output in `screenshots/automation/` or a dated subfolder if the set grows large.
-
-## Build and run
-
-From the repository root:
-
-| Action | Unix / macOS | Windows (cmd/PowerShell) |
-|--------|----------------|---------------------------|
-| Debug APK | `./gradlew assembleDebug` | `.\gradlew.bat assembleDebug` |
-| Install debug | `./gradlew installDebug` | `.\gradlew.bat installDebug` |
-| Unit tests | `./gradlew testDebugUnitTest` | `.\gradlew.bat testDebugUnitTest` |
-| Instrumented tests | `./gradlew connectedDebugAndroidTest` | `.\gradlew.bat connectedDebugAndroidTest` |
-| Lint | `./gradlew lintDebug` | `.\gradlew.bat lintDebug` |
-
-Or open the folder in Android Studio, sync Gradle, and use **Run**.
-
-### Current build health (Mar 2026 snapshot)
-
-- `testDebugUnitTest`: passing
-- `lintDebug`: currently blocked by a Kotlin metadata mismatch in `app/libs/litertlm-android-0.8.0-classes.jar` (jar metadata 2.2.0 vs project Kotlin metadata expectation 1.9.0)
-- AGP emits a warning for `compileSdk 35` with AGP `8.3.2`; this is a warning and does not block `assemble`/unit tests
-
-## Local models
-
-Model IDs, sizes, and Hugging Face-related settings are centralized in:
-
-`app/src/main/java/com/charles/pocketassistant/ai/local/ModelConfig.kt`
-
-Onboarding and settings can download, delete, or re-download the selected artifact into app-specific storage.
+| Model | Size | Notes |
+|-------|------|-------|
+| Qwen3 0.6B | ~586 MB | Lightweight, fast |
+| Qwen2.5 1.5B Instruct | ~1.6 GB | Good balance |
+| Gemma 3n E2B | ~3 GB | Most capable, requires HF token |
 
 ## Ollama
 
-1. In onboarding or settings, set the **base URL** (e.g. `http://192.168.1.50:11434/`).
-2. If your proxy requires it, set an **API token** (sent as `Authorization: Bearer …`).
-3. Set the **model name** as exposed by your Ollama instance.
-4. Use the in-app connection test before relying on Ollama-only or auto routing.
+1. Set the **base URL** in settings (e.g. `http://192.168.1.50:11434/`)
+2. Optionally set an **API token** for authenticated proxies
+3. Pick a **model name** from your Ollama instance
+4. Use the in-app connection test before switching to OLLAMA or AUTO mode
 
-Routing is implemented in `AiRouter`: LOCAL mode stays strictly local (no Ollama fallback). OLLAMA mode uses only the remote server. AUTO mode tries Ollama first and falls back to local when unreachable.
+Routing: LOCAL = on-device only, OLLAMA = remote only, AUTO = try remote first, fall back to local.
 
-## Permissions (summary)
+## Permissions
 
-- `INTERNET` — model downloads, optional Ollama, and ads
+- `INTERNET` — model downloads, optional Ollama, ads
 - `ACCESS_NETWORK_STATE` — network-aware downloads
 - `POST_NOTIFICATIONS` — reminders on Android 13+
-- Foreground service types used for resilient model download notifications (see manifest)
-
-## Limitations
-
-- Local LLM behavior depends on the bundled LiteRT/MediaPipe runtime and the downloaded model.
-- PDF OCR is capped at **five pages**.
-- Reminders use local scheduling; there is no calendar sync in the current MVP.
-
-## Contributing and conventions
-
-See **[AGENTS.md](AGENTS.md)** for module boundaries, naming, and commit message style. **[CLAUDE.md](CLAUDE.md)** summarizes data flow and key classes for tooling and contributors.
+- Foreground service for reliable model downloads
 
 ## License
 
