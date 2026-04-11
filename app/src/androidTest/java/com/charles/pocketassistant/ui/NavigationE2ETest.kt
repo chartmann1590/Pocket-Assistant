@@ -1,7 +1,9 @@
 package com.charles.pocketassistant.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -63,7 +65,7 @@ class NavigationE2ETest {
 
     @Test
     fun fullNavigation_homeToTasksViaQuickAction() {
-        composeRule.onNodeWithText("Tasks").performClick()
+        composeRule.onNodeWithContentDescription("Tasks").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Today").assertIsDisplayed()
         composeRule.onNodeWithText("Upcoming").assertIsDisplayed()
@@ -92,8 +94,8 @@ class NavigationE2ETest {
 
     @Test
     fun fullNavigation_homeToDetailAndBack() {
-        // Click on a demo item (Bill)
-        composeRule.onNodeWithText("Bill").performClick()
+        // Click on a demo item (Bill classification label)
+        composeRule.onAllNodes(hasText("Bill", substring = false)).onFirst().performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Item Detail").assertIsDisplayed()
         composeRule.onNodeWithText("AI Summary").assertIsDisplayed()
@@ -106,7 +108,7 @@ class NavigationE2ETest {
 
     @Test
     fun fullNavigation_homeToAskAI() {
-        composeRule.onNodeWithText("Ask AI").performClick()
+        composeRule.onNodeWithContentDescription("Assistant").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Assistant").assertIsDisplayed()
     }
@@ -116,12 +118,12 @@ class NavigationE2ETest {
         // All filter should show all items
         composeRule.onNodeWithText("All").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Bill").assertIsDisplayed()
+        composeRule.onAllNodes(hasText("Bill", substring = false)).onFirst().assertIsDisplayed()
 
         // Bills filter
         composeRule.onNodeWithText("Bills").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Bill").assertIsDisplayed()
+        composeRule.onAllNodes(hasText("Bill", substring = false)).onFirst().assertIsDisplayed()
 
         // Back to All
         composeRule.onNodeWithText("All").performClick()

@@ -88,9 +88,18 @@ class SettingsScreenTest {
 
     @Test
     fun settings_displaysAboutAndSupportSection() {
-        composeRule.onNodeWithText("About & Support").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("GitHub Repository").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Sponsor / Buy Me a Coffee").performScrollTo().assertIsDisplayed()
+        // Scroll toward the bottom (Privacy sits just above About & Support).
+        composeRule.onNodeWithText("Privacy").performScrollTo()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("About & Support").performScrollTo()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("About & Support").assertIsDisplayed()
+        composeRule.onNodeWithText("GitHub Repository").performScrollTo()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("GitHub Repository").assertIsDisplayed()
+        composeRule.onNodeWithText("Sponsor / Buy Me a Coffee").performScrollTo()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Sponsor / Buy Me a Coffee").assertIsDisplayed()
     }
 
     @Test

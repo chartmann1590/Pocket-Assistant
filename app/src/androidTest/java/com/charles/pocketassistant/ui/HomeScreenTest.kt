@@ -3,6 +3,7 @@ package com.charles.pocketassistant.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -56,13 +57,11 @@ class HomeScreenTest {
     }
 
     @Test
-    fun home_displaysQuickActionCards() {
-        composeRule.onNodeWithText("Photo").assertIsDisplayed()
-        composeRule.onNodeWithText("Gallery").assertIsDisplayed()
-        composeRule.onNodeWithText("PDF").assertIsDisplayed()
-        composeRule.onNodeWithText("Paste").assertIsDisplayed()
-        composeRule.onNodeWithText("Tasks").assertIsDisplayed()
-        composeRule.onNodeWithText("Ask AI").assertIsDisplayed()
+    fun home_displaysTopBarActions() {
+        composeRule.onNodeWithContentDescription("Tasks").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Assistant").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Quick add").assertIsDisplayed()
     }
 
     @Test
@@ -95,8 +94,8 @@ class HomeScreenTest {
         // Click "Bills" filter
         composeRule.onNodeWithText("Bills").performClick()
         composeRule.waitForIdle()
-        // Bill classification should be visible
-        composeRule.onNodeWithText("Bill").assertIsDisplayed()
+        // Bill classification on item cards (exact match; avoids matching "Bills" chip)
+        composeRule.onAllNodes(hasText("Bill", substring = false)).onFirst().assertIsDisplayed()
     }
 
     @Test
@@ -124,6 +123,6 @@ class HomeScreenTest {
         composeRule.waitForIdle()
         // Items should show relative time like "Just now" or "Xm ago"
         // Since demo data was just added, at least one should exist
-        composeRule.onNodeWithText("Bill").assertIsDisplayed()
+        composeRule.onAllNodes(hasText("Bill", substring = false)).onFirst().assertIsDisplayed()
     }
 }

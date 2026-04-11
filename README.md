@@ -1,6 +1,7 @@
 # Pocket Assistant
 
 [![Build and release](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/build-and-release.yml)
+[![Tests](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/tests.yml)
 
 **Local-first AI organizer for Android** — turn screenshots, photos, PDFs, and shared text into summaries, tasks, and reminders. OCR and on-device LLM inference stay on your phone unless you configure an [Ollama](https://ollama.ai) server. No vendor-hosted backend for core features.
 
@@ -50,6 +51,44 @@ Machine-specific SDK paths belong in `local.properties`. Do not commit secrets o
 | Lint | `./gradlew lintDebug` | `.\gradlew.bat lintDebug` |
 
 Or open in Android Studio, sync Gradle, and use **Run**.
+
+## Testing
+
+### On GitHub Actions
+
+The [**Tests**](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/tests.yml) workflow runs on every push and pull request:
+
+1. **JVM unit tests** — `testDebugUnitTest` (parsers, routing, `ModelConfig`, etc.).
+2. **Instrumentation tests** — `connectedDebugAndroidTest` on an API 34 emulator (Compose UI, Hilt, navigation). This runs after unit tests pass.
+
+The **Build and release** workflow still runs unit tests before building the APK so releases stay gated.
+
+### On your machine (unit tests)
+
+```bash
+./gradlew testDebugUnitTest
+```
+
+Windows: `.\gradlew.bat testDebugUnitTest`.
+
+### On a physical phone or emulator (instrumentation)
+
+1. Enable **Developer options** and **USB debugging** on the device (or start a local AVD in Android Studio).
+2. Connect via USB (or TCP/IP `adb connect …`) and confirm the device is visible:
+
+   ```bash
+   adb devices
+   ```
+
+3. From the repo root, install the debug app and run all Android tests on that device:
+
+   ```bash
+   ./gradlew installDebug connectedDebugAndroidTest
+   ```
+
+   Windows: `.\gradlew.bat installDebug connectedDebugAndroidTest`.
+
+`GemmaLocalModelEngineTest` uses JUnit `assumeTrue` and **skips** unless a local `.litertlm` model is already installed; other UI tests do not require a downloaded model.
 
 ## Ads & Building from Source
 

@@ -48,8 +48,9 @@ class TasksScreenTest {
             settingsStore.update { it.copy(onboardingComplete = true) }
             dataMaintenanceRepository.clearAllLocalData()
         }
-        // Navigate to Tasks screen
-        composeRule.onNodeWithText("Tasks").performClick()
+        composeRule.waitForIdle()
+        // Tasks is a top bar icon (no visible "Tasks" label on Home)
+        composeRule.onNodeWithContentDescription("Tasks").performClick()
         composeRule.waitForIdle()
     }
 
