@@ -3,96 +3,612 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pocket Assistant</title>
+  <meta name="description" content="Pocket Assistant — local-first AI organizer for Android. OCR, on-device LLM, tasks and reminders. No cloud backend for core features.">
+  <meta name="theme-color" content="#0f172a">
+  <meta property="og:title" content="Pocket Assistant — Local-first AI for Android">
+  <meta property="og:description" content="Turn screenshots and documents into summaries, tasks, and reminders. On-device OCR and LLMs. Optional Ollama.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Pocket Assistant — Local-first AI for Android</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%232563eb'/%3E%3Cstop offset='100%25' style='stop-color:%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath fill='white' d='M9 10h6c3.3 0 6 2.2 6 5.5S18.3 21 15 21h-2v3H9V10zm6 7c1.1 0 2-.9 2-2s-.9-2-2-2h-2v4h2z'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      color-scheme: light dark;
-      --bg: #0f1419;
-      --card: #1a2332;
-      --text: #e8eef7;
-      --muted: #9aa8bc;
-      --accent: #5b9fd4;
-      --accent-hover: #7ab8e8;
+      color-scheme: dark light;
+      --ink: #0c1222;
+      --ink-soft: #1e293b;
+      --surface: #fafbfc;
+      --surface-2: #f1f5f9;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.09);
+      --accent: #2563eb;
+      --accent-2: #7c3aed;
+      --accent-glow: rgba(37, 99, 235, 0.35);
+      --ok: #059669;
+      --radius: 18px;
+      --radius-sm: 11px;
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.05);
+      --shadow-lg: 0 28px 72px rgba(15, 23, 42, 0.14);
+      --font-display: "Outfit", system-ui, sans-serif;
+      --font-body: "Source Sans 3", system-ui, sans-serif;
     }
-    @media (prefers-color-scheme: light) {
+    @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #f4f6f9;
-        --card: #fff;
-        --text: #1a2332;
-        --muted: #5c6b7f;
-        --accent: #1565c0;
-        --accent-hover: #0d47a1;
+        --ink: #f8fafc;
+        --ink-soft: #e2e8f0;
+        --surface: #0b1120;
+        --surface-2: #151d2e;
+        --muted: #94a3b8;
+        --line: rgba(248, 250, 252, 0.07);
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+        --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.5);
+        --accent-glow: rgba(96, 165, 250, 0.28);
       }
     }
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.55;
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      line-height: 1.62;
+      color: var(--ink);
+      background: var(--surface);
     }
-    main {
-      max-width: 40rem;
-      margin: 0 auto;
-      padding: 2.5rem 1.25rem 4rem;
+    .wrap { max-width: 1140px; margin: 0 auto; padding: 0 1.35rem; }
+    /* Nav */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: saturate(140%) blur(14px);
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      border-bottom: 1px solid var(--line);
     }
-    h1 { font-size: 1.85rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
-    .tagline { color: var(--muted); font-size: 1.05rem; margin: 0 0 2rem; }
-    .card {
-      background: var(--card);
-      border-radius: 12px;
-      padding: 1.35rem 1.5rem;
-      margin-bottom: 1.25rem;
-      border: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 0;
+      flex-wrap: wrap;
     }
-    .card h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; font-weight: 600; }
-    a.btn {
-      display: inline-block;
-      background: var(--accent);
+    .brand {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.12rem;
+      letter-spacing: -0.035em;
+      color: var(--ink);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: grid;
+      place-items: center;
       color: #fff;
+      box-shadow: 0 4px 18px var(--accent-glow);
+      flex-shrink: 0;
+    }
+    .brand-icon svg { width: 22px; height: 22px; display: block; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem 1.15rem;
+      flex-wrap: wrap;
+    }
+    .nav-links a:not(.btn) {
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.94rem;
+      padding: 0.4rem 0;
+      position: relative;
+    }
+    .nav-links a:not(.btn):hover { color: var(--accent); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.94rem;
+      padding: 0.62rem 1.25rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 55%, var(--accent-2) 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 32px var(--accent-glow); }
+    .btn-ghost {
+      background: var(--surface-2);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .btn-ghost:hover {
+      background: color-mix(in srgb, var(--surface-2) 75%, var(--accent));
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+    }
+    /* Hero */
+    .hero {
+      position: relative;
+      padding: 2.75rem 0 4.5rem;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% -25%, rgba(37, 99, 235, 0.2), transparent 55%),
+        radial-gradient(ellipse 55% 45% at 100% 5%, rgba(124, 58, 237, 0.14), transparent),
+        radial-gradient(ellipse 45% 35% at 0% 25%, rgba(5, 150, 105, 0.09), transparent);
+      pointer-events: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      .hero::before {
+        background:
+          radial-gradient(ellipse 90% 55% at 50% -25%, rgba(59, 130, 246, 0.22), transparent 55%),
+          radial-gradient(ellipse 55% 45% at 100% 5%, rgba(139, 92, 246, 0.16), transparent);
+      }
+    }
+    .hero-grid {
+      position: relative;
+      display: grid;
+      gap: 2.75rem;
+      align-items: center;
+    }
+    @media (min-width: 920px) {
+      .hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: 3.25rem; }
+    }
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.05rem, 5.2vw, 3rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+      margin: 0 0 1.1rem;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(105deg, var(--accent) 0%, var(--accent-2) 45%, #0d9488 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    @media (prefers-color-scheme: dark) {
+      .hero h1 .grad {
+        background: linear-gradient(105deg, #93c5fd 0%, #c4b5fd 50%, #5eead4 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+    }
+    .hero-lead {
+      font-size: 1.14rem;
+      color: var(--muted);
+      margin: 0 0 1.55rem;
+      max-width: 38ch;
+    }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.35rem; }
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+    }
+    .hero-badges img {
+      height: 24px;
+      vertical-align: middle;
+      border-radius: 5px;
+      opacity: 0.95;
+      transition: opacity 0.2s;
+    }
+    .hero-badges a:hover img { opacity: 1; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ok);
+      background: color-mix(in srgb, var(--ok) 13%, transparent);
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1.1rem;
+      border: 1px solid color-mix(in srgb, var(--ok) 22%, transparent);
+    }
+    .phone-showcase {
+      display: flex;
+      justify-content: center;
+      perspective: 1400px;
+    }
+    .phone-frame {
+      position: relative;
+      width: min(292px, 82vw);
+      border-radius: 32px;
+      padding: 11px;
+      background: linear-gradient(155deg, #334155 0%, #0f172a 48%, #020617 100%);
+      box-shadow:
+        var(--shadow-lg),
+        0 0 0 1px rgba(255,255,255,0.07) inset,
+        0 -20px 50px rgba(37, 99, 235, 0.08);
+      transform: rotateY(-7deg) rotateX(5deg);
+      animation: phoneFloat 7s ease-in-out infinite;
+    }
+    @keyframes phoneFloat {
+      0%, 100% { transform: rotateY(-7deg) rotateX(5deg) translateY(0); }
+      50% { transform: rotateY(-7deg) rotateX(5deg) translateY(-8px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .phone-frame { animation: none; }
+    }
+    @media (max-width: 919px) {
+      .phone-frame { transform: none; animation: phoneFloatMobile 6s ease-in-out infinite; }
+      @keyframes phoneFloatMobile {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+    }
+    .phone-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 22px;
+      vertical-align: middle;
+    }
+    .phone-notch {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92px;
+      height: 24px;
+      background: #020617;
+      border-radius: 0 0 16px 16px;
+      z-index: 2;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    /* Sections */
+    .eyebrow {
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 0.5rem;
+      text-align: center;
+    }
+    section.block { padding: 3.5rem 0; }
+    section.block h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.55rem, 3vw, 1.95rem);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      margin: 0 0 0.65rem;
+      text-align: center;
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      max-width: 40rem;
+      margin: 0 auto 2.75rem;
+      font-size: 1.05rem;
+    }
+    .features {
+      display: grid;
+      gap: 1.1rem;
+      grid-template-columns: repeat(auto-fit, minmax(252px, 1fr));
+    }
+    .feature {
+      padding: 1.45rem 1.35rem;
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+    }
+    .feature:hover {
+      border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+      box-shadow: var(--shadow);
+      transform: translateY(-3px);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-size: 1.4rem;
+      margin-bottom: 0.85rem;
+      background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent-2) 12%, transparent));
+      border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+    .feature h3 {
+      font-family: var(--font-display);
+      font-size: 1.12rem;
+      font-weight: 700;
+      margin: 0 0 0.45rem;
+      letter-spacing: -0.02em;
+    }
+    .feature p { margin: 0; font-size: 0.96rem; color: var(--muted); }
+    /* Gallery */
+    .gallery-wrap { background: linear-gradient(180deg, var(--surface-2) 0%, color-mix(in srgb, var(--surface-2) 40%, var(--surface)) 100%); margin: 0; border-block: 1px solid var(--line); }
+    .gallery {
+      display: grid;
+      gap: 1.65rem;
+      grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    }
+    .shot {
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .shot:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+    }
+    .shot .img-wrap {
+      position: relative;
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      padding: 12px 12px 0;
+    }
+    .shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px 14px 0 0;
+      vertical-align: middle;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .shot figcaption {
+      padding: 1rem 1.1rem 1.15rem;
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--ink-soft);
+      border-top: 1px solid var(--line);
+      letter-spacing: -0.02em;
+    }
+    /* Download */
+    .download-panel {
+      border-radius: calc(var(--radius) + 6px);
+      padding: 2.35rem 1.75rem;
+      background:
+        radial-gradient(ellipse 80% 80% at 50% -30%, color-mix(in srgb, var(--accent) 14%, transparent), transparent),
+        linear-gradient(165deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line);
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .download-panel h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.35rem, 2.5vw, 1.65rem);
+      font-weight: 800;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.03em;
+    }
+    .download-panel p { color: var(--muted); margin: 0 0 1.35rem; max-width: 44ch; margin-inline: auto; }
+    .download-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; justify-content: center; margin-bottom: 0.85rem; }
+    #release-note { font-size: 0.9rem; color: var(--muted); min-height: 1.45rem; }
+    .links-grid {
+      display: grid;
+      gap: 0.85rem;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      margin-top: 1.75rem;
+    }
+    .links-grid a {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.95rem 1.1rem;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--ink);
       text-decoration: none;
       font-weight: 600;
-      padding: 0.65rem 1.15rem;
-      border-radius: 8px;
-      margin: 0.35rem 0.5rem 0.35rem 0;
+      font-size: 0.94rem;
+      font-family: var(--font-display);
+      transition: border-color 0.18s, color 0.18s, transform 0.18s;
     }
-    a.btn:hover { background: var(--accent-hover); }
-    a.link { color: var(--accent); }
-    ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
-    li { margin: 0.35rem 0; }
-    footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
-    #release-note { font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; min-height: 1.25rem; }
+    .links-grid a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+    footer.site-footer {
+      padding: 2.75rem 0 3rem;
+      margin-top: 0;
+      border-top: 1px solid var(--line);
+      font-size: 0.89rem;
+      color: var(--muted);
+      text-align: center;
+      background: color-mix(in srgb, var(--surface-2) 35%, var(--surface));
+    }
+    footer.site-footer a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    footer.site-footer a:hover { text-decoration: underline; }
+    code {
+      font-size: 0.86em;
+      padding: 0.18em 0.45em;
+      border-radius: 7px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Pocket Assistant</h1>
-    <p class="tagline">Local-first AI organizer for Android — OCR, on-device LLM, tasks &amp; reminders.</p>
-
-    <div class="card">
-      <h2>Download</h2>
-      <p>Debug APK from the latest CI release (install with <code>adb install</code> or open on device).</p>
-      <a class="btn" id="apk-link" href="#">Download app-debug.apk</a>
-      <a class="btn" id="releases-link" href="#">All releases</a>
-      <p id="release-note"></p>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 3L4 7v10l8 4 8-4V7l-8-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/>
+            <path d="M12 8v8M8 10.5h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        Pocket Assistant
+      </a>
+      <nav class="nav-links" aria-label="Page">
+        <a href="#features">Features</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#download">Download</a>
+        <a href="#links">Source</a>
+      </nav>
+      <div class="nav-links">
+        <a class="btn btn-primary" id="nav-apk" href="#">Get APK</a>
+      </div>
     </div>
+  </header>
 
-    <div class="card">
-      <h2>Source &amp; CI</h2>
-      <ul>
-        <li><a class="link" id="repo-link" href="#">GitHub repository</a></li>
-        <li><a class="link" id="workflow-link" href="#">Build workflow</a></li>
-        <li><a class="link" id="readme-link" href="#">README</a></li>
-      </ul>
+  <div id="top"></div>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="pill"><span aria-hidden="true">●</span> Privacy-first · Offline-capable</p>
+        <h1><span class="grad">Your AI organizer,</span><br>entirely on your phone.</h1>
+        <p class="hero-lead">
+          Turn screenshots, photos, PDFs, and shared text into summaries, tasks, and reminders.
+          OCR and on-device models stay local unless <em>you</em> point the app at Ollama.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" id="hero-apk" href="#">Download debug APK</a>
+          <a class="btn btn-ghost" id="hero-releases" href="#">Release history</a>
+        </div>
+        <div class="hero-badges" id="ci-badges" aria-label="CI status"></div>
+      </div>
+      <div class="phone-showcase" aria-hidden="true">
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <img src="assets/screenshots/screen_now.png" width="1080" height="2400" alt="" loading="eager">
+        </div>
+      </div>
     </div>
+  </section>
 
-    <footer>
-      Site deploys automatically after each successful <strong>Build and release</strong> workflow run.
-      Enable <em>Settings → Pages → Build and deployment → GitHub Actions</em> if this URL is blank.
-    </footer>
-  </main>
+  <section class="block" id="features">
+    <div class="wrap">
+      <p class="eyebrow">Capabilities</p>
+      <h2>Built for real work</h2>
+      <p class="section-sub">OCR, semantic search, optional self-hosted LLMs, and reminders — without sending your documents to a vendor backend.</p>
+      <div class="features">
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">📷</div>
+          <h3>Smart capture</h3>
+          <p>ML Kit text recognition for images; PDF text up to five pages. Import from share sheet or camera.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🧠</div>
+          <h3>On-device AI</h3>
+          <p>Download LiteRT-LM models (Qwen, Gemma 4, and more). Works offline after install.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🔍</div>
+          <h3>Semantic search</h3>
+          <p>Natural-language queries across saved items with on-device embeddings.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">✓</div>
+          <h3>Tasks &amp; reminders</h3>
+          <p>Extracted tasks with due dates and local notifications — your data stays on device.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">☁️</div>
+          <h3>Optional Ollama</h3>
+          <p>Connect to your own server for heavier models; AUTO mode falls back to local when needed.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon" aria-hidden="true">🔒</div>
+          <h3>No telemetry</h3>
+          <p>No cloud backend for core features. You control network use and remote endpoints.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block gallery-wrap" id="screenshots">
+    <div class="wrap">
+      <p class="eyebrow">Product</p>
+      <h2>Screenshots</h2>
+      <p class="section-sub">Assistant chat, home, and reminders — captured from the open-source project.</p>
+      <div class="gallery">
+        <figure class="shot">
+          <div class="img-wrap">
+            <img src="assets/screenshots/screenshot_assistant.png" width="1080" height="2400" alt="Assistant chat with AI context" loading="lazy">
+          </div>
+          <figcaption>AI Assistant</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="img-wrap">
+            <img src="assets/screenshots/screen_now.png" width="1080" height="2400" alt="Home and recent items" loading="lazy">
+          </div>
+          <figcaption>Home &amp; recent items</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="img-wrap">
+            <img src="assets/screenshots/screenshot_warning.png" width="1080" height="2400" alt="Reminder and scheduling UI" loading="lazy">
+          </div>
+          <figcaption>Reminders &amp; scheduling</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="download">
+    <div class="wrap">
+      <div class="download-panel">
+        <h2>Try the latest build</h2>
+        <p>Install the CI-built <strong>debug APK</strong> on your Android device (USB debugging or “Install unknown apps”).</p>
+        <div class="download-actions">
+          <a class="btn btn-primary" id="apk-link" href="#">Download app-debug.apk</a>
+          <a class="btn btn-ghost" id="releases-link" href="#">All releases</a>
+        </div>
+        <p id="release-note"></p>
+      </div>
+
+      <div class="links-grid" id="links">
+        <a id="repo-link" href="#">Repository</a>
+        <a id="workflow-link" href="#">Build &amp; release</a>
+        <a id="tests-workflow-link" href="#">Tests CI</a>
+        <a id="readme-link" href="#">README</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        Open source under the repo license. This site is published from <code>docs/</code> via GitHub Actions.
+        <a id="footer-pages-hint" href="#">View on GitHub</a>
+      </p>
+    </div>
+  </footer>
+
   <script>
     (function () {
       var owner = "chartmann1590";
@@ -105,23 +621,57 @@
       }
       var repo = owner + "/" + repoName;
       var base = "https://github.com/" + repo;
-      document.getElementById("apk-link").href = base + "/releases/latest/download/app-debug.apk";
-      document.getElementById("releases-link").href = base + "/releases";
-      document.getElementById("repo-link").href = base;
-      document.getElementById("workflow-link").href = base + "/actions/workflows/build-and-release.yml";
-      document.getElementById("readme-link").href = base + "/blob/master/README.md";
+      var apk = base + "/releases/latest/download/app-debug.apk";
+      var origin = window.location.origin || "";
+
+      function setHref(id, href) {
+        var el = document.getElementById(id);
+        if (el) el.href = href;
+      }
+      setHref("apk-link", apk);
+      setHref("hero-apk", apk);
+      setHref("nav-apk", apk);
+      setHref("releases-link", base + "/releases");
+      setHref("hero-releases", base + "/releases");
+      setHref("repo-link", base);
+      setHref("workflow-link", base + "/actions/workflows/build-and-release.yml");
+      setHref("tests-workflow-link", base + "/actions/workflows/tests.yml");
+      setHref("readme-link", base + "/blob/master/README.md");
+      setHref("footer-pages-hint", base);
+
+      var badges = document.getElementById("ci-badges");
+      if (badges) {
+        var br = "https://github.com/" + repo + "/actions/workflows/";
+        badges.innerHTML =
+          '<a href="' + br + 'build-and-release.yml" title="Build and release">' +
+          '<img alt="Build and release" src="https://github.com/' + repo + '/actions/workflows/build-and-release.yml/badge.svg"></a>' +
+          '<a href="' + br + 'tests.yml" title="Tests">' +
+          '<img alt="Tests" src="https://github.com/' + repo + '/actions/workflows/tests.yml/badge.svg"></a>';
+      }
+
+      var ogImg = document.querySelector('meta[property="og:image"]');
+      if (ogImg && origin) {
+        var pathBase = (window.location.pathname || "/").replace(/\/index\.html$/i, "").replace(/\/$/, "") || "";
+        ogImg.setAttribute("content", origin + pathBase + "/assets/screenshots/screenshot_assistant.png");
+      }
+
       var note = document.getElementById("release-note");
       fetch("https://api.github.com/repos/" + repo + "/releases/latest")
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
-          if (!data || !data.name) return;
-          note.textContent = "Latest release: " + data.name + " (" + (data.tag_name || "") + ")";
+          if (!data || !data.name) {
+            if (note) note.textContent = "Open Releases to pick an APK if the latest build is not listed.";
+            return;
+          }
+          if (note) note.textContent = "Latest: " + data.name + " · " + (data.tag_name || "");
           var asset = (data.assets || []).find(function (a) { return a.name === "app-debug.apk"; });
           if (asset && asset.browser_download_url) {
-            document.getElementById("apk-link").href = asset.browser_download_url;
+            setHref("apk-link", asset.browser_download_url);
+            setHref("hero-apk", asset.browser_download_url);
+            setHref("nav-apk", asset.browser_download_url);
           }
         })
-        .catch(function () {});
+        .catch(function () { if (note) note.textContent = ""; });
     })();
   </script>
 </body>
