@@ -23,6 +23,7 @@ After the first workflow run, enable **Settings → Pages → Build and deployme
 - **Auto-extraction** — AI categorizes items as Bills, Messages, Appointments, or Notes and pulls out dates, amounts, and contacts
 - **Tasks & reminders** — extracted tasks with due dates and local reminder scheduling
 - **Optional Ollama** — connect to a self-hosted Ollama server for more powerful models; AUTO mode tries remote first, falls back to local
+- **In-app update checker** — checks GitHub Releases on launch and shows a download banner when a newer APK is available; manual "Check now" in Settings
 - **Privacy by design** — no cloud backend, no telemetry; everything runs offline
 
 <p align="center">
