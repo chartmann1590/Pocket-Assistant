@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://chartmann1590.github.io/Pocket-Assistant/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png</image:loc>
+      <image:title>Pocket Assistant — AI Assistant chat</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/home.png</image:loc>
+      <image:title>Pocket Assistant — Home and recent items</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/assistant.png</image:loc>
+      <image:title>Pocket Assistant — AI assistant</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/chat.png</image:loc>
+      <image:title>Pocket Assistant — Chat with context</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/tasks.png</image:loc>
+      <image:title>Pocket Assistant — Tasks and due dates</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/settings.png</image:loc>
+      <image:title>Pocket Assistant — AI and model settings</image:title>
+    </image:image>
+  </url>
+</urlset>

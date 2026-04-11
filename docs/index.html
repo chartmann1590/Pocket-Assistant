@@ -3,14 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Pocket Assistant — local-first AI organizer for Android. OCR, on-device LLM, tasks and reminders. No cloud backend for core features.">
-  <meta name="theme-color" content="#0b1120">
-  <meta property="og:title" content="Pocket Assistant — Local-first AI for Android">
-  <meta property="og:description" content="Turn screenshots and documents into summaries, tasks, and reminders. On-device OCR and LLMs. Optional Ollama.">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png">
-  <meta name="twitter:card" content="summary_large_image">
   <title>Pocket Assistant — Local-first AI for Android</title>
+  <meta name="description" content="Local-first AI organizer for Android. OCR, on-device LLM, semantic search, tasks and reminders. No cloud backend for core features. Free and open source.">
+  <meta name="keywords" content="android, ai, llm, ocr, on-device, privacy, open source, offline, qwen, gemma, ollama, semantic search, tasks, reminders, local-first">
+  <meta name="author" content="Pocket Assistant contributors">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#fafbfc" media="(prefers-color-scheme: light)">
+  <meta name="application-name" content="Pocket Assistant">
+  <meta name="apple-mobile-web-app-title" content="Pocket Assistant">
+  <link rel="canonical" href="https://chartmann1590.github.io/Pocket-Assistant/">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pocket Assistant">
+  <meta property="og:title" content="Pocket Assistant — Local-first AI for Android">
+  <meta property="og:description" content="Turn screenshots and documents into summaries, tasks, and reminders. On-device OCR and LLMs. Optional Ollama. No cloud backend.">
+  <meta property="og:url" content="https://chartmann1590.github.io/Pocket-Assistant/">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:image" content="https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png">
+  <meta property="og:image:secure_url" content="https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1080">
+  <meta property="og:image:height" content="2400">
+  <meta property="og:image:alt" content="Pocket Assistant — AI Assistant chat on an Android phone">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pocket Assistant — Local-first AI for Android">
+  <meta name="twitter:description" content="Turn screenshots and documents into summaries, tasks, and reminders. On-device OCR and LLMs. Optional Ollama.">
+  <meta name="twitter:image" content="https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png">
+  <meta name="twitter:image:alt" content="Pocket Assistant — AI Assistant chat on an Android phone">
+
+  <link rel="sitemap" type="application/xml" href="sitemap.xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="apple-touch-icon" href="assets/screenshots/screenshot_assistant.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%232563eb'/%3E%3Cstop offset='100%25' style='stop-color:%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath fill='white' d='M9 10h6c3.3 0 6 2.2 6 5.5S18.3 21 15 21h-2v3H9V10zm6 7c1.1 0 2-.9 2-2s-.9-2-2-2h-2v4h2z'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -806,6 +833,139 @@
       font-family: "SF Mono", Menlo, monospace;
     }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://chartmann1590.github.io/Pocket-Assistant/#website",
+        "url": "https://chartmann1590.github.io/Pocket-Assistant/",
+        "name": "Pocket Assistant",
+        "description": "Local-first AI organizer for Android. OCR, on-device LLM, tasks and reminders.",
+        "inLanguage": "en-US",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Pocket Assistant contributors",
+          "url": "https://github.com/chartmann1590/Pocket-Assistant"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://chartmann1590.github.io/Pocket-Assistant/#app",
+        "name": "Pocket Assistant",
+        "alternateName": "Pocket Assistant for Android",
+        "url": "https://chartmann1590.github.io/Pocket-Assistant/",
+        "operatingSystem": "Android 8.0+ (API 26+)",
+        "applicationCategory": "ProductivityApplication",
+        "applicationSubCategory": "AI Assistant",
+        "description": "Local-first AI organizer for Android. Turn screenshots, photos, PDFs, and shared text into summaries, tasks, and reminders. OCR and on-device LLMs stay local unless you configure an Ollama server.",
+        "featureList": [
+          "On-device OCR via ML Kit",
+          "Local LLM inference (Qwen, Gemma)",
+          "Neural semantic search",
+          "Task and reminder extraction",
+          "Optional self-hosted Ollama integration",
+          "No cloud backend, no telemetry"
+        ],
+        "softwareVersion": "debug",
+        "downloadUrl": "https://github.com/chartmann1590/Pocket-Assistant/releases/latest/download/app-debug.apk",
+        "installUrl": "https://github.com/chartmann1590/Pocket-Assistant/releases/latest",
+        "screenshot": [
+          "https://chartmann1590.github.io/Pocket-Assistant/images/home.png",
+          "https://chartmann1590.github.io/Pocket-Assistant/images/assistant.png",
+          "https://chartmann1590.github.io/Pocket-Assistant/images/chat.png",
+          "https://chartmann1590.github.io/Pocket-Assistant/images/tasks.png",
+          "https://chartmann1590.github.io/Pocket-Assistant/images/settings.png"
+        ],
+        "image": "https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Pocket Assistant contributors",
+          "url": "https://github.com/chartmann1590/Pocket-Assistant"
+        },
+        "license": "https://github.com/chartmann1590/Pocket-Assistant/blob/master/README.md"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://chartmann1590.github.io/Pocket-Assistant/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does Pocket Assistant send my data anywhere?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. By default OCR and the LLM run entirely on your device. If you enable Ollama mode, requests go only to the server URL you configure. There is no vendor backend and no telemetry."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which local models are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Qwen 3 0.6B (~586 MB), Qwen 2.5 1.5B Instruct (~1.6 GB), Gemma 4 E2B IT (~2.4 GB), and Gemma 4 E4B IT (~3.5 GB). Gemma 3n E2B is also available but requires a Hugging Face token."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is this a release APK or a debug build?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "CI publishes a debug APK on every push — great for trying things out. For a production build, clone the repo and run ./gradlew assembleRelease with your own signing config."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I connect to my own Ollama server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "In Settings, set the base URL (for example http://192.168.1.50:11434/), optionally add an API token, then pick a model from the list. The list is populated from your server's /api/tags endpoint — no typing required."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Will this app drain my battery?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "LLM inference is CPU-heavy while running, but the app only runs the model when you import an item or chat with the assistant. It is idle the rest of the time."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I build it myself?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Clone the repo, open in Android Studio (JDK 17, SDK 35), and run. See the README for command-line Gradle instructions."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://chartmann1590.github.io/Pocket-Assistant/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Download",
+            "item": "https://chartmann1590.github.io/Pocket-Assistant/#download"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <div class="bg-orbs" aria-hidden="true">

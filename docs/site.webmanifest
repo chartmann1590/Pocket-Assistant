@@ -1,0 +1,19 @@
+{
+  "name": "Pocket Assistant",
+  "short_name": "Pocket Assistant",
+  "description": "Local-first AI organizer for Android. OCR, on-device LLM, tasks and reminders.",
+  "start_url": "/Pocket-Assistant/",
+  "scope": "/Pocket-Assistant/",
+  "display": "standalone",
+  "background_color": "#070b15",
+  "theme_color": "#0b1120",
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "assets/screenshots/screenshot_assistant.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
