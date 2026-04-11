@@ -31,4 +31,26 @@ class OllamaUrlNormalizerTest {
         val parsed = json.decodeFromString<OllamaModelListResponse>(onlyModel)
         assertEquals("gemma3:latest", parsed.models.orEmpty().first().resolvedName())
     }
+
+    @Test
+    fun emptyInputStaysEmpty() {
+        assertEquals("", OllamaUrlNormalizer.normalize(""))
+        assertEquals("", OllamaUrlNormalizer.normalize("   "))
+    }
+
+    @Test
+    fun preservesNonApiPaths() {
+        assertEquals(
+            "https://example.com/v1/ollama/",
+            OllamaUrlNormalizer.normalize("https://example.com/v1/ollama")
+        )
+    }
+
+    @Test
+    fun stripsQueryWhenApiPathPresent() {
+        assertEquals(
+            "http://192.168.1.5:11434/",
+            OllamaUrlNormalizer.normalize("http://192.168.1.5:11434/api/tags?foo=1")
+        )
+    }
 }

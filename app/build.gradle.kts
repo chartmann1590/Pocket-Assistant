@@ -67,6 +67,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    testOptions {
+        unitTests {
+            // Lets android.util.Log no-op in JVM tests (AiJsonParser and similar).
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {

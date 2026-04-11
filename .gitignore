@@ -47,6 +47,9 @@ settings.preferences_pb
 /litertlm-*.module
 /litertlm-metadata.xml
 
+# Play Console prep (listing copy + captioned screenshots; regenerate via scripts/play-store)
+play-store/
+
 # Internal project docs (keep locally, not on GitHub)
 CLAUDE.md
 AGENTS.md

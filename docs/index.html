@@ -1,701 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pocket Assistant — Local-First AI Organizer for Android</title>
-    <meta name="description" content="Pocket Assistant is a privacy-first Android app that turns screenshots, photos, PDFs, and text into summaries, tasks, and reminders using on-device AI. No cloud required.">
-    <meta name="keywords" content="android app, ai assistant, ocr, local llm, on-device ai, task manager, reminder app, privacy first, offline ai, pocket assistant">
-    <meta name="author" content="Charles Hartmann">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://chartmann1590.github.io/Pocket-Assistant/">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Pocket Assistant — Local-First AI Organizer for Android">
-    <meta property="og:description" content="Turn screenshots, photos, PDFs, and text into summaries, tasks, and reminders with on-device AI. No cloud required.">
-    <meta property="og:url" content="https://chartmann1590.github.io/Pocket-Assistant/">
-    <meta property="og:image" content="https://chartmann1590.github.io/Pocket-Assistant/images/home.png">
-    <meta property="og:site_name" content="Pocket Assistant">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Pocket Assistant — Local-First AI Organizer for Android">
-    <meta name="twitter:description" content="Turn screenshots, photos, PDFs, and text into summaries, tasks, and reminders with on-device AI.">
-    <meta name="twitter:image" content="https://chartmann1590.github.io/Pocket-Assistant/images/home.png">
-
-    <!-- JSON-LD Structured Data -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Pocket Assistant",
-        "operatingSystem": "Android",
-        "applicationCategory": "UtilitiesApplication",
-        "description": "A local-first Android app that turns screenshots, photos, PDFs, and text into summaries, tasks, and reminders using on-device AI.",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        },
-        "author": {
-            "@type": "Person",
-            "name": "Charles Hartmann"
-        }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pocket Assistant</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e8eef7;
+      --muted: #9aa8bc;
+      --accent: #5b9fd4;
+      --accent-hover: #7ab8e8;
     }
-    </script>
-
-    <style>
-        :root {
-            --bg: #0a0e1a;
-            --bg-card: #131829;
-            --bg-card-hover: #1a2038;
-            --accent: #6c63ff;
-            --accent-glow: rgba(108, 99, 255, 0.3);
-            --accent2: #00d4aa;
-            --text: #e8eaf0;
-            --text-muted: #8891a8;
-            --border: #1e2640;
-            --gradient-start: #6c63ff;
-            --gradient-end: #00d4aa;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        html { scroll-behavior: smooth; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* Navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            background: rgba(10, 14, 26, 0.85);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
-        }
-
-        nav .nav-inner {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        nav .logo {
-            font-size: 1.25rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        nav .nav-links { display: flex; gap: 2rem; list-style: none; }
-
-        nav .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.2s;
-        }
-
-        nav .nav-links a:hover { color: var(--text); }
-
-        /* Hero */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8rem 2rem 4rem;
-            position: relative;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -20%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 800px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .hero-inner {
-            max-width: 1200px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            align-items: center;
-            position: relative;
-        }
-
-        .hero-text h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-        }
-
-        .hero-text h1 span {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-text p {
-            font-size: 1.2rem;
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            max-width: 500px;
-        }
-
-        .hero-badges {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            margin-bottom: 2rem;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.35rem 0.85rem;
-            border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            background: var(--bg-card);
-        }
-
-        .badge.accent {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .cta-group { display: flex; gap: 1rem; flex-wrap: wrap; }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.85rem 2rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: none;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            color: white;
-            box-shadow: 0 4px 24px var(--accent-glow);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px var(--accent-glow);
-        }
-
-        .btn-secondary {
-            background: var(--bg-card);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--accent);
-        }
-
-        /* Phone mockup */
-        .hero-visual {
-            display: flex;
-            justify-content: center;
-            perspective: 1000px;
-        }
-
-        .phone-frame {
-            width: 280px;
-            border-radius: 32px;
-            overflow: hidden;
-            box-shadow:
-                0 0 0 2px rgba(108, 99, 255, 0.2),
-                0 20px 60px rgba(0, 0, 0, 0.5),
-                0 0 100px var(--accent-glow);
-            transform: rotateY(-5deg) rotateX(2deg);
-            transition: transform 0.5s ease;
-        }
-
-        .phone-frame:hover {
-            transform: rotateY(0deg) rotateX(0deg);
-        }
-
-        .phone-frame img {
-            width: 100%;
-            display: block;
-        }
-
-        /* Sections */
-        section {
-            padding: 6rem 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 4rem;
-        }
-
-        .section-header h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-
-        .section-header p {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Features grid */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .feature-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem;
-            transition: all 0.3s ease;
-        }
-
-        .feature-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--accent);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-        }
-
-        .feature-card h3 {
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        /* Screenshots gallery */
-        .screenshots-gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 2rem;
-            justify-items: center;
-        }
-
-        .screenshot-item {
-            text-align: center;
-        }
-
-        .screenshot-item img {
-            width: 220px;
-            border-radius: 20px;
-            box-shadow:
-                0 0 0 1px rgba(108, 99, 255, 0.15),
-                0 12px 40px rgba(0, 0, 0, 0.4);
-            transition: all 0.4s ease;
-        }
-
-        .screenshot-item img:hover {
-            transform: scale(1.05) translateY(-8px);
-            box-shadow:
-                0 0 0 1px rgba(108, 99, 255, 0.3),
-                0 20px 60px rgba(0, 0, 0, 0.5),
-                0 0 40px var(--accent-glow);
-        }
-
-        .screenshot-item p {
-            margin-top: 1rem;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* Tech stack */
-        .tech-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .tech-item {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.25rem;
-            text-align: center;
-            transition: border-color 0.3s;
-        }
-
-        .tech-item:hover { border-color: var(--accent); }
-
-        .tech-item .tech-name {
-            font-weight: 600;
-            font-size: 1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .tech-item .tech-desc {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-
-        /* How it works */
-        .steps {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 2rem;
-        }
-
-        .step {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .step-number {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 800;
-            margin: 0 auto 1.25rem;
-        }
-
-        .step h3 {
-            font-size: 1.15rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .step p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        /* Privacy banner */
-        .privacy-banner {
-            background: linear-gradient(135deg, rgba(108, 99, 255, 0.1), rgba(0, 212, 170, 0.1));
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            margin: 2rem auto;
-            max-width: 800px;
-        }
-
-        .privacy-banner h3 {
-            font-size: 1.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .privacy-banner p {
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Footer */
-        footer {
-            border-top: 1px solid var(--border);
-            padding: 3rem 2rem;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        footer a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        footer a:hover { text-decoration: underline; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero-inner {
-                grid-template-columns: 1fr;
-                text-align: center;
-                gap: 3rem;
-            }
-
-            .hero-text h1 { font-size: 2.5rem; }
-            .hero-text p { margin: 0 auto 2rem; }
-            .hero-badges { justify-content: center; }
-            .cta-group { justify-content: center; }
-            .section-header h2 { font-size: 2rem; }
-            .phone-frame { width: 240px; transform: none; }
-            .phone-frame:hover { transform: none; }
-
-            nav .nav-links { gap: 1rem; }
-            nav .nav-links a { font-size: 0.8rem; }
-        }
-
-        @media (max-width: 480px) {
-            nav .nav-links { display: none; }
-            .hero-text h1 { font-size: 2rem; }
-        }
-    </style>
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f4f6f9;
+        --card: #fff;
+        --text: #1a2332;
+        --muted: #5c6b7f;
+        --accent: #1565c0;
+        --accent-hover: #0d47a1;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    main {
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 { font-size: 1.85rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .tagline { color: var(--muted); font-size: 1.05rem; margin: 0 0 2rem; }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.35rem 1.5rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+    }
+    .card h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 0.75rem; font-weight: 600; }
+    a.btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 0.65rem 1.15rem;
+      border-radius: 8px;
+      margin: 0.35rem 0.5rem 0.35rem 0;
+    }
+    a.btn:hover { background: var(--accent-hover); }
+    a.link { color: var(--accent); }
+    ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+    li { margin: 0.35rem 0; }
+    footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
+    #release-note { font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; min-height: 1.25rem; }
+  </style>
 </head>
 <body>
+  <main>
+    <h1>Pocket Assistant</h1>
+    <p class="tagline">Local-first AI organizer for Android — OCR, on-device LLM, tasks &amp; reminders.</p>
 
-<nav>
-    <div class="nav-inner">
-        <div class="logo">Pocket Assistant</div>
-        <ul class="nav-links">
-            <li><a href="#features">Features</a></li>
-            <li><a href="#screenshots">Screenshots</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#tech">Tech Stack</a></li>
-            <li><a href="https://github.com/chartmann1590/Pocket-Assistant">GitHub</a></li>
-        </ul>
-    </div>
-</nav>
-
-<!-- Hero -->
-<div class="hero">
-    <div class="hero-inner">
-        <div class="hero-text">
-            <div class="hero-badges">
-                <span class="badge accent">On-Device AI</span>
-                <span class="badge">Privacy First</span>
-                <span class="badge">No Cloud Required</span>
-            </div>
-            <h1>Your documents,<br><span>understood instantly.</span></h1>
-            <p>Pocket Assistant turns screenshots, photos, PDFs, and text into summaries, tasks, and reminders &mdash; all processed locally on your Android device.</p>
-            <div class="cta-group">
-                <a href="https://github.com/chartmann1590/Pocket-Assistant" class="btn btn-primary">
-                    View on GitHub
-                </a>
-                <a href="#features" class="btn btn-secondary">
-                    Learn More
-                </a>
-            </div>
-        </div>
-        <div class="hero-visual">
-            <div class="phone-frame">
-                <img src="images/home.png" alt="Pocket Assistant home screen showing quick actions and recent items" width="280" height="607" loading="eager">
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Features -->
-<section id="features">
-    <div class="section-header">
-        <h2>Powerful features, zero compromise</h2>
-        <p>Everything runs on your device. Your data never leaves your phone unless you choose to connect an Ollama server.</p>
-    </div>
-    <div class="features-grid">
-        <div class="feature-card">
-            <div class="feature-icon">&#128247;</div>
-            <h3>Smart OCR Import</h3>
-            <p>Snap a photo, share a screenshot, or import a PDF. ML Kit extracts text instantly with support for up to 5 PDF pages.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">&#129302;</div>
-            <h3>On-Device LLM</h3>
-            <p>Choose from three downloadable models (Qwen3, Qwen2.5, Gemma 3n) running entirely on-device via LiteRT. No internet needed.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">&#128269;</div>
-            <h3>Neural Semantic Search</h3>
-            <p>Find items by meaning, not just keywords. MediaPipe Universal Sentence Encoder powers natural language queries across all your items.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">&#128172;</div>
-            <h3>RAG Assistant</h3>
-            <p>Ask questions about your saved items. The assistant uses semantic search to find relevant context and generates informed answers.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">&#9989;</div>
-            <h3>Tasks &amp; Reminders</h3>
-            <p>AI automatically extracts actionable tasks, due dates, and appointments. Set local reminders that work offline.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">&#128274;</div>
-            <h3>Privacy by Design</h3>
-            <p>All core features work offline. No vendor backend, no data collection. Optional Ollama integration for more powerful models when you want it.</p>
-        </div>
-    </div>
-</section>
-
-<!-- Screenshots -->
-<section id="screenshots">
-    <div class="section-header">
-        <h2>See it in action</h2>
-        <p>A clean, dark-themed interface designed for quick capture and easy browsing.</p>
-    </div>
-    <div class="screenshots-gallery">
-        <div class="screenshot-item">
-            <img src="images/home.png" alt="Pocket Assistant home screen with quick actions and categorized items" width="220" height="477" loading="lazy">
-            <p>Home Screen</p>
-        </div>
-        <div class="screenshot-item">
-            <img src="images/home-alt.png" alt="Alternative home view with item categories" width="220" height="477" loading="lazy">
-            <p>Item Categories</p>
-        </div>
-        <div class="screenshot-item">
-            <img src="images/tasks.png" alt="Tasks screen showing today's tasks with due dates" width="220" height="477" loading="lazy">
-            <p>Task Manager</p>
-        </div>
-        <div class="screenshot-item">
-            <img src="images/assistant.png" alt="AI Assistant chat interface" width="220" height="477" loading="lazy">
-            <p>AI Assistant</p>
-        </div>
-        <div class="screenshot-item">
-            <img src="images/chat.png" alt="Assistant conversation with contextual answers" width="220" height="477" loading="lazy">
-            <p>Smart Conversations</p>
-        </div>
-        <div class="screenshot-item">
-            <img src="images/settings.png" alt="Settings screen with AI mode selection and model download" width="220" height="477" loading="lazy">
-            <p>AI Settings</p>
-        </div>
-    </div>
-</section>
-
-<!-- How It Works -->
-<section id="how-it-works">
-    <div class="section-header">
-        <h2>How it works</h2>
-        <p>From capture to insight in seconds, entirely on your device.</p>
-    </div>
-    <div class="steps">
-        <div class="step">
-            <div class="step-number">1</div>
-            <h3>Capture</h3>
-            <p>Share a screenshot, photo, or PDF from any app, or paste text directly. OCR extracts text automatically.</p>
-        </div>
-        <div class="step">
-            <div class="step-number">2</div>
-            <h3>Analyze</h3>
-            <p>On-device AI categorizes the content, extracts entities like dates, amounts, and contacts, and generates a summary.</p>
-        </div>
-        <div class="step">
-            <div class="step-number">3</div>
-            <h3>Organize</h3>
-            <p>Items are automatically sorted into Bills, Messages, Appointments, and Notes. Tasks and reminders are created from the content.</p>
-        </div>
-        <div class="step">
-            <div class="step-number">4</div>
-            <h3>Ask</h3>
-            <p>Use the AI assistant to query your saved items. "When is my next bill due?" gets answered using your actual data.</p>
-        </div>
+    <div class="card">
+      <h2>Download</h2>
+      <p>Debug APK from the latest CI release (install with <code>adb install</code> or open on device).</p>
+      <a class="btn" id="apk-link" href="#">Download app-debug.apk</a>
+      <a class="btn" id="releases-link" href="#">All releases</a>
+      <p id="release-note"></p>
     </div>
 
-    <div class="privacy-banner">
-        <h3>Your data stays yours</h3>
-        <p>Pocket Assistant processes everything locally using on-device ML models. There is no cloud backend, no telemetry, and no data leaves your phone. You are in full control.</p>
+    <div class="card">
+      <h2>Source &amp; CI</h2>
+      <ul>
+        <li><a class="link" id="repo-link" href="#">GitHub repository</a></li>
+        <li><a class="link" id="workflow-link" href="#">Build workflow</a></li>
+        <li><a class="link" id="readme-link" href="#">README</a></li>
+      </ul>
     </div>
-</section>
 
-<!-- Tech Stack -->
-<section id="tech">
-    <div class="section-header">
-        <h2>Built with modern Android</h2>
-        <p>A clean, single-module architecture powered by industry-standard libraries.</p>
-    </div>
-    <div class="tech-grid">
-        <div class="tech-item">
-            <div class="tech-name">Kotlin</div>
-            <div class="tech-desc">100% Kotlin codebase</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">Jetpack Compose</div>
-            <div class="tech-desc">Declarative UI framework</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">Hilt</div>
-            <div class="tech-desc">Dependency injection</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">Room</div>
-            <div class="tech-desc">Local database persistence</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">ML Kit</div>
-            <div class="tech-desc">OCR &amp; entity extraction</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">LiteRT / MediaPipe</div>
-            <div class="tech-desc">On-device LLM inference</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">WorkManager</div>
-            <div class="tech-desc">Reliable model downloads</div>
-        </div>
-        <div class="tech-item">
-            <div class="tech-name">Retrofit</div>
-            <div class="tech-desc">Optional Ollama HTTP client</div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA -->
-<section style="text-align: center; padding-bottom: 4rem;">
-    <h2 style="font-size: 2rem; margin-bottom: 1rem;">Ready to try it?</h2>
-    <p style="color: var(--text-muted); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">Clone the repository, build with Gradle, and start organizing your documents with AI &mdash; all on your device.</p>
-    <a href="https://github.com/chartmann1590/Pocket-Assistant" class="btn btn-primary">
-        Get Started on GitHub
-    </a>
-</section>
-
-<footer>
-    <p>Pocket Assistant &mdash; Open Source, Local-First AI for Android</p>
-    <p style="margin-top: 0.5rem;">
-        <a href="https://github.com/chartmann1590/Pocket-Assistant">Source Code</a>
-    </p>
-</footer>
-
+    <footer>
+      Site deploys automatically after each successful <strong>Build and release</strong> workflow run.
+      Enable <em>Settings → Pages → Build and deployment → GitHub Actions</em> if this URL is blank.
+    </footer>
+  </main>
+  <script>
+    (function () {
+      var owner = "chartmann1590";
+      var repoName = "Pocket-Assistant";
+      var host = window.location.hostname || "";
+      if (host.endsWith(".github.io")) {
+        owner = host.replace(".github.io", "");
+        var seg = window.location.pathname.split("/").filter(Boolean)[0];
+        if (seg) repoName = seg;
+      }
+      var repo = owner + "/" + repoName;
+      var base = "https://github.com/" + repo;
+      document.getElementById("apk-link").href = base + "/releases/latest/download/app-debug.apk";
+      document.getElementById("releases-link").href = base + "/releases";
+      document.getElementById("repo-link").href = base;
+      document.getElementById("workflow-link").href = base + "/actions/workflows/build-and-release.yml";
+      document.getElementById("readme-link").href = base + "/blob/master/README.md";
+      var note = document.getElementById("release-note");
+      fetch("https://api.github.com/repos/" + repo + "/releases/latest")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !data.name) return;
+          note.textContent = "Latest release: " + data.name + " (" + (data.tag_name || "") + ")";
+          var asset = (data.assets || []).find(function (a) { return a.name === "app-debug.apk"; });
+          if (asset && asset.browser_download_url) {
+            document.getElementById("apk-link").href = asset.browser_download_url;
+          }
+        })
+        .catch(function () {});
+    })();
+  </script>
 </body>
 </html>

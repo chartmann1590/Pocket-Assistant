@@ -1,6 +1,11 @@
 # Pocket Assistant
 
+[![Build and release](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/chartmann1590/Pocket-Assistant/actions/workflows/build-and-release.yml)
+
 **Local-first AI organizer for Android** — turn screenshots, photos, PDFs, and shared text into summaries, tasks, and reminders. OCR and on-device LLM inference stay on your phone unless you configure an [Ollama](https://ollama.ai) server. No vendor-hosted backend for core features.
+
+**Project site (GitHub Pages):** [chartmann1590.github.io/Pocket-Assistant](https://chartmann1590.github.io/Pocket-Assistant/) — download link for the latest CI-built debug APK and quick links to releases and the repo.  
+After the first workflow run, enable **Settings → Pages → Build and deployment → GitHub Actions** if the site is not live yet.
 
 <p align="center">
   <img src="screenshots/device/screen.png" alt="Home screen" width="230">&nbsp;&nbsp;
@@ -11,7 +16,7 @@
 ## Features
 
 - **Smart OCR** — ML Kit text recognition for images; PDF extraction (up to 5 pages)
-- **On-device LLM** — three downloadable models (Qwen3 0.6B, Qwen2.5 1.5B, Gemma 3n) via LiteRT, no internet needed
+- **On-device LLM** — downloadable LiteRT-LM models (Qwen3 0.6B, Qwen2.5 1.5B, Gemma 4 E2B/E4B, Gemma 3n); no internet needed after install
 - **Neural semantic search** — MediaPipe Universal Sentence Encoder for natural language queries
 - **RAG assistant** — ask questions about your saved items; semantic search finds context, LLM generates answers
 - **Auto-extraction** — AI categorizes items as Bills, Messages, Appointments, or Notes and pulls out dates, amounts, and contacts
@@ -85,13 +90,15 @@ Single Gradle module `:app` (Kotlin DSL). Main code under `app/src/main/java/com
 
 ## Local Models
 
-Model IDs, sizes, and Hugging Face settings are in `ModelConfig.kt`. Three options:
+Model IDs, sizes, and Hugging Face settings are in `ModelConfig.kt`.
 
 | Model | Size | Notes |
 |-------|------|-------|
 | Qwen3 0.6B | ~586 MB | Lightweight, fast |
 | Qwen2.5 1.5B Instruct | ~1.6 GB | Good balance |
-| Gemma 3n E2B | ~3 GB | Most capable, requires HF token |
+| Gemma 4 E2B IT | ~2.4 GB | Gemma 4, phone-friendly; no HF token |
+| Gemma 4 E4B IT | ~3.5 GB | Larger Gemma 4; no HF token |
+| Gemma 3n E2B | ~3.5 GB | Legacy gated repo; requires HF token |
 
 ## Ollama
 

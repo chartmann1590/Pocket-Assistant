@@ -45,6 +45,30 @@ object ModelConfig {
             tokenHelpText = "No Hugging Face token is required for this model."
         ),
         LocalModelProfile(
+            id = "gemma4_e2b",
+            tierLabel = "Gemma 4 E2B",
+            displayName = "Gemma 4 E2B IT",
+            shortDescription = "Google Gemma 4 in a phone-friendly size. Official LiteRT-LM build from the LiteRT community hub—no Hugging Face token.",
+            remoteUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+            modelSizeMb = 2464,
+            requiredFreeSpaceMb = 4000,
+            requiresAuthToken = false,
+            repoUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm",
+            tokenHelpText = "No Hugging Face token is required for this model."
+        ),
+        LocalModelProfile(
+            id = "gemma4_e4b",
+            tierLabel = "Gemma 4 E4B",
+            displayName = "Gemma 4 E4B IT",
+            shortDescription = "Larger Gemma 4 variant for better quality when you have more storage and RAM. Official LiteRT-LM build—no Hugging Face token.",
+            remoteUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm",
+            modelSizeMb = 3487,
+            requiredFreeSpaceMb = 5500,
+            requiresAuthToken = false,
+            repoUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm",
+            tokenHelpText = "No Hugging Face token is required for this model."
+        ),
+        LocalModelProfile(
             id = "gemma3n_e2b",
             tierLabel = "Heavy",
             displayName = "Gemma 3n E2B",
