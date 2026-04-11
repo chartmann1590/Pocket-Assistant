@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,6 +72,7 @@ import android.webkit.WebViewClient
 import com.charles.pocketassistant.ai.local.ModelConfig
 import com.charles.pocketassistant.ai.prompt.PromptFactory
 import com.charles.pocketassistant.ui.SettingsViewModel
+import com.charles.pocketassistant.ui.UpdateCheckUiState
 import com.charles.pocketassistant.ui.components.SimpleInput
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,6 +80,7 @@ import com.charles.pocketassistant.ui.components.SimpleInput
 fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     val testMessage by vm.testMessage.collectAsState()
+    val updateCheckState by vm.updateCheckState.collectAsState()
     val uriHandler = LocalUriHandler.current
     var showSponsorModal by remember { mutableStateOf(false) }
     val selectedProfile = state.availableModels.firstOrNull { it.id == state.selectedLocalModelId } ?: ModelConfig.defaultProfile
@@ -379,6 +382,47 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
                 PrivacyItem("Ollama is optional and user-configured")
                 PrivacyItem("No backend hosted by us")
                 PrivacyItem("Data stays local unless you choose Ollama")
+            }
+
+            // Updates
+            SettingsSection(
+                icon = Icons.Outlined.SystemUpdate,
+                title = "Updates",
+                iconTint = MaterialTheme.colorScheme.primary
+            ) {
+                val statusText = when (val s = updateCheckState) {
+                    UpdateCheckUiState.Idle -> "Tap to check GitHub for the latest release."
+                    UpdateCheckUiState.Checking -> "Checking for updates..."
+                    UpdateCheckUiState.UpToDate -> "You're on the latest release."
+                    UpdateCheckUiState.Error -> "Couldn't reach GitHub. Try again later."
+                    is UpdateCheckUiState.Available -> "New release available: ${s.release.tag.ifBlank { s.release.name }}"
+                }
+                Text(statusText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(
+                        onClick = vm::checkForUpdateNow,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = updateCheckState !is UpdateCheckUiState.Checking
+                    ) {
+                        Text("Check now")
+                    }
+                    val available = updateCheckState as? UpdateCheckUiState.Available
+                    if (available != null) {
+                        Button(
+                            onClick = {
+                                val url = available.release.apkAssetUrl.ifBlank { available.release.htmlUrl }
+                                if (url.isNotBlank()) uriHandler.openUri(url)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Download")
+                        }
+                    }
+                }
             }
 
             // About & Support

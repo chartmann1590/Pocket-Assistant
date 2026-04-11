@@ -59,12 +59,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.charles.pocketassistant.data.db.entity.ItemEntity
 import com.charles.pocketassistant.ui.HomeViewModel
 import com.charles.pocketassistant.ui.ImportViewModel
 import com.charles.pocketassistant.ui.components.ProcessingSheet
+import com.charles.pocketassistant.ui.components.UpdateBanner
 import com.charles.pocketassistant.ui.theme.LocalExtendedColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -83,6 +85,8 @@ fun HomeScreen(
     val processing by importViewModel.processing.collectAsState()
     val searchQuery by homeViewModel.searchQuery.collectAsState()
     val searchResults by homeViewModel.searchResults.collectAsState()
+    val updateAvailable by homeViewModel.updateAvailable.collectAsState()
+    val uriHandler = LocalUriHandler.current
     var selectedFilter by remember { mutableStateOf("All") }
     val displayItems = searchResults ?: when (selectedFilter) {
         "Bills" -> items.filter { it.classification == "bill" }
@@ -142,6 +146,20 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            updateAvailable?.let { available ->
+                item {
+                    UpdateBanner(
+                        release = available.release,
+                        onDownload = {
+                            val url = available.release.apkAssetUrl.ifBlank { available.release.htmlUrl }
+                            if (url.isNotBlank()) uriHandler.openUri(url)
+                        },
+                        onDismiss = { homeViewModel.dismissUpdate() },
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
             // Search bar
             item {
                 Spacer(Modifier.height(8.dp))

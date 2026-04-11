@@ -28,6 +28,8 @@ import com.charles.pocketassistant.data.repository.ModelRepository
 import com.charles.pocketassistant.data.repository.OllamaRepositoryImpl
 import com.charles.pocketassistant.data.repository.SettingsRepository
 import com.charles.pocketassistant.data.repository.TaskRepository
+import com.charles.pocketassistant.data.repository.UpdateRepository
+import com.charles.pocketassistant.domain.UpdateDecision
 import com.charles.pocketassistant.domain.model.AssistantChatResult
 import com.charles.pocketassistant.domain.model.AssistantItemReference
 import com.charles.pocketassistant.domain.model.StoredAssistantAction
@@ -53,6 +55,14 @@ enum class OnboardingModeSelection {
     LOCAL,
     OLLAMA,
     BOTH
+}
+
+sealed interface UpdateCheckUiState {
+    data object Idle : UpdateCheckUiState
+    data object Checking : UpdateCheckUiState
+    data object UpToDate : UpdateCheckUiState
+    data object Error : UpdateCheckUiState
+    data class Available(val release: com.charles.pocketassistant.domain.LatestRelease) : UpdateCheckUiState
 }
 
 data class OnboardingUiState(
@@ -461,8 +471,25 @@ class HomeViewModel @Inject constructor(
     private val itemRepository: ItemRepository,
     private val aiRepository: AiRepository,
     private val semanticSearchEngine: com.charles.pocketassistant.ml.SemanticSearchEngine,
-    private val priorityScorer: com.charles.pocketassistant.ml.PriorityScorer
+    private val priorityScorer: com.charles.pocketassistant.ml.PriorityScorer,
+    private val updateRepository: UpdateRepository
 ) : ViewModel() {
+    val updateAvailable: StateFlow<UpdateDecision.Available?> = updateRepository.available
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), updateRepository.available.value)
+
+    fun checkForUpdate(force: Boolean = false) {
+        viewModelScope.launch {
+            runCatching { updateRepository.checkForUpdate(force) }
+        }
+    }
+
+    fun dismissUpdate() {
+        val current = updateRepository.available.value ?: return
+        viewModelScope.launch {
+            updateRepository.dismiss(current.release.tag)
+        }
+    }
+
     val items = itemRepository.observeItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -514,6 +541,7 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        checkForUpdate(force = false)
         viewModelScope.launch {
             items.collect { itemList ->
                 val results = aiRepository.getRecentResults(200)
@@ -1713,8 +1741,29 @@ class SettingsViewModel @Inject constructor(
     private val localModelDownloadManager: LocalModelDownloadManager,
     private val localModelManager: LocalModelManager,
     private val dataMaintenanceRepository: DataMaintenanceRepository,
-    private val localLlmEngine: LocalLlmEngine
+    private val localLlmEngine: LocalLlmEngine,
+    private val updateRepository: UpdateRepository
 ) : ViewModel() {
+    private val _updateCheckState = MutableStateFlow<UpdateCheckUiState>(UpdateCheckUiState.Idle)
+    val updateCheckState: StateFlow<UpdateCheckUiState> = _updateCheckState
+
+    fun checkForUpdateNow() {
+        _updateCheckState.value = UpdateCheckUiState.Checking
+        viewModelScope.launch {
+            val decision = updateRepository.checkForUpdate(force = true)
+            _updateCheckState.value = when (decision) {
+                is UpdateDecision.Available -> UpdateCheckUiState.Available(decision.release)
+                UpdateDecision.Dismissed -> UpdateCheckUiState.UpToDate
+                UpdateDecision.UpToDate -> UpdateCheckUiState.UpToDate
+                UpdateDecision.CheckSkipped -> UpdateCheckUiState.Error
+            }
+        }
+    }
+
+    fun clearUpdateCheck() {
+        _updateCheckState.value = UpdateCheckUiState.Idle
+    }
+
     private val dataToolsState = MutableStateFlow("")
     private val downloadState = MutableStateFlow(Pair(false, 0))
     private val downloadMessageState = MutableStateFlow("")

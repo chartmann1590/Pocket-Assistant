@@ -9,11 +9,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.charles.pocketassistant.ads.AdManager
+import com.charles.pocketassistant.data.repository.UpdateRepository
 import com.charles.pocketassistant.ml.DocumentScannerHelper
 import com.charles.pocketassistant.ui.app.AppNav
 import com.charles.pocketassistant.ui.theme.PocketAssistantTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -22,6 +25,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var documentScannerHelper: DocumentScannerHelper
     @Inject lateinit var adManager: AdManager
+    @Inject lateinit var updateRepository: UpdateRepository
 
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -57,6 +61,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleShareIntent(intent)
+        lifecycleScope.launch {
+            runCatching { updateRepository.checkForUpdate(force = false) }
+        }
         setContent {
             PocketAssistantTheme {
                 AppNav(

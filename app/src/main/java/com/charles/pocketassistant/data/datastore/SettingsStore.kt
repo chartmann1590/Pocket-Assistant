@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
@@ -38,8 +39,15 @@ data class UserSettings(
 fun UserSettings.isOllamaConfigured(): Boolean =
     ollamaBaseUrl.trim().isNotBlank() && ollamaModelName.trim().isNotBlank()
 
+data class UpdatePrefs(
+    val dismissedTag: String = "",
+    val lastCheckMillis: Long = 0L
+)
+
 class SettingsStore(private val context: Context) {
     private object Keys {
+        val dismissedUpdateTag = stringPreferencesKey("dismissedUpdateTag")
+        val lastUpdateCheckMillis = longPreferencesKey("lastUpdateCheckMillis")
         val onboardingComplete = booleanPreferencesKey("onboardingComplete")
         val aiMode = stringPreferencesKey("aiMode")
         val selectedLocalModelId = stringPreferencesKey("selectedLocalModelId")
@@ -125,5 +133,21 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.rewardCredits] = next.rewardCredits
             prefs[Keys.adFreeUntil] = next.adFreeUntil
         }
+    }
+
+    suspend fun updatePrefs(): UpdatePrefs {
+        val prefs = context.dataStore.data.first()
+        return UpdatePrefs(
+            dismissedTag = prefs[Keys.dismissedUpdateTag].orEmpty(),
+            lastCheckMillis = prefs[Keys.lastUpdateCheckMillis] ?: 0L
+        )
+    }
+
+    suspend fun setDismissedUpdateTag(tag: String) {
+        context.dataStore.edit { it[Keys.dismissedUpdateTag] = tag }
+    }
+
+    suspend fun setLastUpdateCheck(millis: Long) {
+        context.dataStore.edit { it[Keys.lastUpdateCheckMillis] = millis }
     }
 }
