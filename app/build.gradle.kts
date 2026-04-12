@@ -17,6 +17,15 @@ val admobBannerId = localProps.getProperty("ADMOB_BANNER_ID", "")
 val admobInterstitialId = localProps.getProperty("ADMOB_INTERSTITIAL_ID", "")
 val admobRewardedId = localProps.getProperty("ADMOB_REWARDED_ID", "")
 
+// Release signing — reads from keystore.properties at the repo root.
+// Create one by copying keystore.properties.template and filling in the
+// values for the upload key you generated with keytool. Never commit it.
+val keystoreProps = Properties()
+val keystoreFile = rootProject.file("keystore.properties")
+if (keystoreFile.exists()) {
+    keystoreFile.inputStream().use { keystoreProps.load(it) }
+}
+
 android {
     namespace = "com.charles.pocketassistant"
     compileSdk = 35
@@ -38,6 +47,19 @@ android {
         manifestPlaceholders["admobAppId"] = if (adsEnabled && admobAppId.isNotBlank()) admobAppId else "ca-app-pub-3940256099942544~3347511713"
     }
 
+    signingConfigs {
+        if (!keystoreProps.isEmpty) {
+            create("release") {
+                val storeFilePath = keystoreProps.getProperty("storeFile")
+                // storeFile is resolved relative to the :app module directory.
+                storeFile = file(storeFilePath)
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -45,6 +67,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {

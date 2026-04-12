@@ -30,4 +30,9 @@
       <image:title>Pocket Assistant — AI and model settings</image:title>
     </image:image>
   </url>
+  <url>
+    <loc>https://chartmann1590.github.io/Pocket-Assistant/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
 </urlset>

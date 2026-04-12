@@ -1,0 +1,8 @@
+First public release.
+
+• On-device OCR for screenshots, photos, and PDFs.
+• Downloadable local LLM models (Qwen and Gemma).
+• Neural semantic search and a RAG assistant.
+• Task and reminder extraction with local notifications.
+• Optional Ollama integration for self-hosted models.
+• In-app update checker via GitHub Releases.

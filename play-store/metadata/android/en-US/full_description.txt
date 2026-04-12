@@ -1,0 +1,32 @@
+Pocket Assistant turns the screenshots, photos, PDFs, and shared text you already have into a clean list of bills, messages, appointments, and notes — with extracted dates, amounts, and action items. Every core feature runs on your device. There is no vendor backend and no telemetry.
+
+WHAT IT DOES
+
+• Smart capture — share a screenshot or PDF from any app, or pick one from storage. ML Kit runs on-device OCR on images and extracts text from up to five PDF pages.
+• On-device AI — download a LiteRT-LM model once (Qwen 3 0.6B, Qwen 2.5 1.5B, Gemma 4 E2B, or Gemma 4 E4B) and the app summarizes, classifies, and extracts entities entirely offline. No account. No cloud call.
+• Neural semantic search — ask questions like "what's due next week" or "grocery receipts over 50 dollars" and a MediaPipe Universal Sentence Encoder finds the right items by meaning, not keyword.
+• RAG assistant — a built-in chat lets you ask questions about your saved items. The assistant retrieves relevant context from your pocket and answers with the local LLM.
+• Tasks and reminders — extracted action items land on a Tasks screen with due dates and local notifications. Reminders are scheduled on your phone, not in the cloud.
+• Optional Ollama — bring your own self-hosted Ollama server if you want bigger models. AUTO mode tries your server first and falls back to the local model when it is unreachable.
+• In-app updates — the app checks GitHub Releases on launch and surfaces a banner when a newer build is available, so you never miss an update.
+
+WHY LOCAL-FIRST
+
+Pocket Assistant is built for the documents you would never paste into a cloud chatbot: bills, medical letters, messages, receipts. OCR, classification, entity extraction, and semantic search all run on your device using ML Kit, MediaPipe, and LiteRT-LM. The only time data leaves your phone is when you explicitly configure an Ollama endpoint that you control.
+
+• No cloud backend hosted by us.
+• No analytics or telemetry.
+• No account, no sign-in.
+• Local database, local notifications, local models.
+
+PRIVACY AND PERMISSIONS
+
+• Camera and photo access — only when you import a photo or scan a document.
+• Notifications — only to deliver reminders you scheduled yourself.
+• Internet — used to download the optional local model, check for app updates on GitHub, and reach your Ollama server if you configure one.
+
+Full privacy policy: https://chartmann1590.github.io/Pocket-Assistant/privacy.html
+
+OPEN SOURCE
+
+Pocket Assistant is open source under the MIT license. Source, issues, and releases live at https://github.com/chartmann1590/Pocket-Assistant.

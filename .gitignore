@@ -16,6 +16,7 @@ out/
 # Keystores (never commit signing keys)
 *.jks
 *.keystore
+keystore.properties
 
 # OS
 .DS_Store
@@ -47,8 +48,11 @@ settings.preferences_pb
 /litertlm-*.module
 /litertlm-metadata.xml
 
-# Play Console prep (listing copy + captioned screenshots; regenerate via scripts/play-store)
-play-store/
+# Play Console prep — commit scripts, READMEs, and text metadata;
+# ignore generated images, the promo MP4, and any built bundle/APK output.
+play-store/metadata/android/*/images/
+play-store/release/output/
+play-store/scripts/.video_frames/
 
 # Internal project docs (keep locally, not on GitHub)
 CLAUDE.md

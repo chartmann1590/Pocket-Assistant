@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Pocket Assistant</title>
+  <meta name="description" content="Privacy policy for Pocket Assistant, a local-first AI organizer for Android.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://chartmann1590.github.io/Pocket-Assistant/privacy.html">
+  <style>
+    :root {
+      --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --ink: #1e293b;
+      --ink-soft: #475569;
+      --surface: #fafbfc;
+      --surface-2: #ffffff;
+      --accent: #2563eb;
+      --line: rgba(30, 41, 59, 0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #f8fafc;
+        --ink-soft: #94a3b8;
+        --surface: #070b15;
+        --surface-2: #0f172a;
+        --accent: #60a5fa;
+        --line: rgba(248, 250, 252, 0.08);
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--ink);
+      background: var(--surface);
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.35rem; margin-top: 2.4rem; margin-bottom: 0.5rem; }
+    p, ul { margin: 0.6rem 0; }
+    ul { padding-left: 1.4rem; }
+    li { margin: 0.3rem 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .meta { color: var(--ink-soft); font-size: 0.92rem; margin-bottom: 2rem; }
+    .back { display: inline-block; margin-bottom: 1.5rem; font-weight: 600; }
+    footer { text-align: center; color: var(--ink-soft); font-size: 0.88rem; padding: 2rem 0; border-top: 1px solid var(--line); margin-top: 3rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="./">&larr; Back to Pocket Assistant</a>
+
+    <h1>Privacy Policy</h1>
+    <p class="meta">Effective date: April 12, 2026 &middot; Last updated: April 12, 2026</p>
+
+    <p>
+      Pocket Assistant ("the app") is a local-first AI organizer for Android.
+      This policy explains what data the app handles, how it is processed, and
+      what choices you have.
+    </p>
+
+    <h2>1. Data we collect</h2>
+    <p><strong>None.</strong></p>
+    <p>
+      Pocket Assistant has no backend server, no analytics service, and no user
+      accounts. We do not collect, transmit, or store any personal data. All
+      content you import — screenshots, photos, PDFs, and pasted text — stays
+      in a local database on your device.
+    </p>
+
+    <h2>2. On-device processing</h2>
+    <p>The following processing happens entirely on your device:</p>
+    <ul>
+      <li><strong>OCR</strong> — ML Kit text recognition runs on-device to extract text from images and PDFs.</li>
+      <li><strong>AI classification and summarization</strong> — a downloaded LiteRT-LM model runs locally. No data is sent to a cloud API.</li>
+      <li><strong>Semantic search</strong> — MediaPipe Universal Sentence Encoder computes embeddings on-device.</li>
+      <li><strong>Entity extraction</strong> — ML Kit entity extraction identifies dates, amounts, and contacts locally.</li>
+      <li><strong>Tasks and reminders</strong> — scheduled via the Android AlarmManager on your phone.</li>
+    </ul>
+
+    <h2>3. Optional network use</h2>
+    <p>The app accesses the internet only in these explicit, user-initiated scenarios:</p>
+    <ul>
+      <li>
+        <strong>Local model download</strong> — when you choose to download an
+        on-device LLM model, the app fetches it from Hugging Face. Only the
+        model file is transferred; no user data is sent.
+      </li>
+      <li>
+        <strong>Ollama integration</strong> — if you configure an Ollama server
+        in Settings, prompts and context are sent to the endpoint you specified.
+        This is entirely opt-in; the app does not contact any server unless you
+        provide a URL.
+      </li>
+      <li>
+        <strong>Update checker</strong> — on launch the app queries the GitHub
+        Releases API for your repository to check whether a newer build is
+        available. No personal data is included in this request.
+      </li>
+    </ul>
+
+    <h2>4. Permissions</h2>
+    <ul>
+      <li><strong>Camera / photo access</strong> — used only when you import a photo or scan a document.</li>
+      <li><strong>Notifications</strong> — used only to deliver reminders you scheduled.</li>
+      <li><strong>Internet</strong> — used for model download, Ollama (if configured), and update checks.</li>
+    </ul>
+    <p>No permission is used for advertising, tracking, or analytics.</p>
+
+    <h2>5. Third-party services</h2>
+    <p>
+      The open-source build of Pocket Assistant does not include any
+      third-party analytics, crash reporting, or advertising SDKs. If a build
+      variant enables ads (via the <code>ADS_ENABLED</code> flag), Google
+      AdMob may collect data according to
+      <a href="https://policies.google.com/privacy" rel="noopener">Google's
+      Privacy Policy</a>. The default open-source build ships with ads
+      disabled.
+    </p>
+
+    <h2>6. Children's privacy</h2>
+    <p>
+      Pocket Assistant is not directed at children under 13. We do not
+      knowingly collect personal information from children.
+    </p>
+
+    <h2>7. Data retention and deletion</h2>
+    <p>
+      All data is stored locally on your device. You can delete everything at
+      any time via <strong>Settings &rarr; Local Data &rarr; Clear
+      database</strong>, or by uninstalling the app. There is nothing to
+      delete on our end because we never receive your data.
+    </p>
+
+    <h2>8. Changes to this policy</h2>
+    <p>
+      If we update this policy, the new version will be published at this URL
+      and the "Last updated" date above will change. Material changes will be
+      noted in the app's release notes.
+    </p>
+
+    <h2>9. Contact</h2>
+    <p>
+      Questions or concerns? Open an issue on the
+      <a href="https://github.com/chartmann1590/Pocket-Assistant/issues" rel="noopener">GitHub repository</a>.
+    </p>
+
+    <footer>
+      &copy; Pocket Assistant contributors &middot;
+      <a href="./">Home</a> &middot;
+      <a href="https://github.com/chartmann1590/Pocket-Assistant">GitHub</a>
+    </footer>
+  </div>
+</body>
+</html>

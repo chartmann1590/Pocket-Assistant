@@ -1,0 +1,3 @@
+# Paste the YouTube URL for the promo video here after uploading
+# play-store/metadata/android/en-US/images/promoVideo/promo.mp4
+# (Play Console only accepts YouTube URLs, not raw MP4 uploads.)

@@ -1,0 +1,1 @@
+Local-first AI organizer. OCR, on-device LLM, tasks and reminders. Private.
