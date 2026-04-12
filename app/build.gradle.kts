@@ -70,6 +70,14 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.findByName("release")
+
+            // Production ad IDs baked into the release build
+            buildConfigField("boolean", "ADS_ENABLED", "true")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-8382831211800454/6213916177\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-8382831211800454/9638856567\"")
+            buildConfigField("String", "ADMOB_REWARDED_ID", "\"ca-app-pub-8382831211800454/2887280805\"")
+            buildConfigField("String", "ADMOB_OPEN_AD_ID", "\"ca-app-pub-8382831211800454/6355548601\"")
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-8382831211800454~6392077823"
         }
     }
     compileOptions {
