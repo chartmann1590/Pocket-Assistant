@@ -168,4 +168,4 @@ Routing: LOCAL = on-device only, OLLAMA = remote only, AUTO = try remote first, 
 
 ## License
 
-Specify your license here if you publish the repo publicly.
+This project is licensed under the [MIT License](LICENSE).
