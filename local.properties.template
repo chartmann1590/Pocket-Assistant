@@ -12,3 +12,5 @@ ADMOB_BANNER_ID=
 ADMOB_INTERSTITIAL_ID=
 # Your AdMob rewarded ad unit ID (required if ADS_ENABLED=true)
 ADMOB_REWARDED_ID=
+# Your AdMob app open ad unit ID (shown when app returns to foreground)
+ADMOB_OPEN_AD_ID=

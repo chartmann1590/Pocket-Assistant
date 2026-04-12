@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.charles.pocketassistant.ads.AdManager
+import com.charles.pocketassistant.ads.AppOpenAdManager
 import com.charles.pocketassistant.ml.EntityExtractionEngine
 import com.charles.pocketassistant.ml.NeuralEmbeddingEngine
 import com.charles.pocketassistant.util.NotificationHelper
@@ -21,6 +22,7 @@ class PocketAssistantApp : Application(), Configuration.Provider {
     @Inject lateinit var entityExtractionEngine: EntityExtractionEngine
     @Inject lateinit var neuralEmbeddingEngine: NeuralEmbeddingEngine
     @Inject lateinit var adManager: AdManager
+    @Inject lateinit var appOpenAdManager: AppOpenAdManager
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -35,6 +37,8 @@ class PocketAssistantApp : Application(), Configuration.Provider {
         notificationHelper.createChannels()
         // Initialize ads SDK (no-op if ADS_ENABLED=false)
         adManager.initialize()
+        appOpenAdManager.attach(this)
+        appOpenAdManager.loadAd()
         appScope.launch {
             // Pre-download ML Kit entity extraction model (~2MB, fast)
             entityExtractionEngine.ensureModelReady()

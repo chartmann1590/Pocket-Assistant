@@ -16,6 +16,7 @@ val admobAppId = localProps.getProperty("ADMOB_APP_ID", "")
 val admobBannerId = localProps.getProperty("ADMOB_BANNER_ID", "")
 val admobInterstitialId = localProps.getProperty("ADMOB_INTERSTITIAL_ID", "")
 val admobRewardedId = localProps.getProperty("ADMOB_REWARDED_ID", "")
+val admobOpenAdId = localProps.getProperty("ADMOB_OPEN_AD_ID", "")
 
 // Release signing — reads from keystore.properties at the repo root.
 // Create one by copying keystore.properties.template and filling in the
@@ -44,6 +45,7 @@ android {
         buildConfigField("String", "ADMOB_BANNER_ID", "\"$admobBannerId\"")
         buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"$admobInterstitialId\"")
         buildConfigField("String", "ADMOB_REWARDED_ID", "\"$admobRewardedId\"")
+        buildConfigField("String", "ADMOB_OPEN_AD_ID", "\"$admobOpenAdId\"")
         manifestPlaceholders["admobAppId"] = if (adsEnabled && admobAppId.isNotBlank()) admobAppId else "ca-app-pub-3940256099942544~3347511713"
     }
 
@@ -103,6 +105,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
