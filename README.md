@@ -5,8 +5,18 @@
 
 **Local-first AI organizer for Android** — turn screenshots, photos, PDFs, and shared text into summaries, tasks, and reminders. OCR and on-device LLM inference stay on your phone unless you configure an [Ollama](https://ollama.ai) server. No vendor-hosted backend for core features.
 
-**Project site (GitHub Pages):** [chartmann1590.github.io/Pocket-Assistant](https://chartmann1590.github.io/Pocket-Assistant/) — download link for the latest CI-built debug APK and quick links to releases and the repo.  
+<a href="https://play.google.com/store/apps/details?id=com.charles.pocketassistant"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80"></a>
+
+**[Google Play](https://play.google.com/store/apps/details?id=com.charles.pocketassistant)** | **[Project site](https://chartmann1590.github.io/Pocket-Assistant/)** — download the latest CI-built debug APK or install from the Play Store.  
 After the first workflow run, enable **Settings → Pages → Build and deployment → GitHub Actions** if the site is not live yet.
+
+<p align="center">
+  <a href="https://youtu.be/OrtOvMgKmwM">
+    <img src="https://img.youtube.com/vi/OrtOvMgKmwM/maxresdefault.jpg" alt="Pocket Assistant demo video" width="600">
+  </a>
+  <br>
+  <em>Watch the demo on YouTube</em>
+</p>
 
 <p align="center">
   <img src="screenshots/device/screen.png" alt="Home screen" width="230">&nbsp;&nbsp;
