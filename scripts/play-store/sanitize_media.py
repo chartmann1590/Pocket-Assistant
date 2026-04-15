@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, UnidentifiedImageError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -27,7 +27,7 @@ class Rect:
 
 
 COMMON_TOP_BAR = Rect(0.0, 0.0, 1.0, 0.07, "solid")
-COMMON_AD_STRIP = Rect(0.0, 0.93, 1.0, 1.0, "solid")
+COMMON_AD_STRIP = Rect(0.0, 0.86, 1.0, 1.0, "solid")
 COMMON_CHAT_AVATAR = Rect(0.34, 0.008, 0.52, 0.055, "solid")
 
 TARGETS: dict[str, list[Rect]] = {
@@ -62,9 +62,24 @@ TARGETS: dict[str, list[Rect]] = {
         COMMON_TOP_BAR,
         Rect(0.05, 0.49, 0.95, 0.90, "blur"),
     ],
+    "screenshots/device/scrolled.png": [
+        COMMON_TOP_BAR,
+        Rect(0.05, 0.49, 0.95, 0.90, "blur"),
+    ],
     "docs/images/home.png": [
         COMMON_TOP_BAR,
         Rect(0.05, 0.49, 0.95, 0.90, "blur"),
+    ],
+    "docs/images/home-alt.png": [
+        COMMON_TOP_BAR,
+        Rect(0.05, 0.60, 0.95, 0.98, "blur"),
+    ],
+    "docs/images/assistant.png": [
+        COMMON_TOP_BAR,
+    ],
+    "docs/images/settings.png": [
+        COMMON_TOP_BAR,
+        Rect(0.05, 0.74, 0.95, 0.98, "blur"),  # token/download details
     ],
     # Demo-video stills (source frames for foreground_service_demo.mp4).
     "play-store/demo-video/01_home.png": [
@@ -115,6 +130,13 @@ TARGETS: dict[str, list[Rect]] = {
     ],
 }
 
+DIRECTORY_DEFAULTS: list[tuple[str, list[Rect]]] = [
+    # Sweep additional screenshot folders so every image is sanitized.
+    ("screenshots/device/*.png", [COMMON_TOP_BAR, Rect(0.0, 0.58, 1.0, 0.98, "blur")]),
+    ("screenshots/automation/*.png", [COMMON_TOP_BAR, Rect(0.0, 0.58, 1.0, 0.98, "blur")]),
+    ("docs/images/*.png", [COMMON_TOP_BAR]),
+]
+
 
 def as_px(rect: Rect, width: int, height: int) -> tuple[int, int, int, int]:
     return (
@@ -156,7 +178,12 @@ def sanitize_file(rel_path: str, rects: list[Rect]) -> None:
         print(f"skip missing: {rel_path}")
         return
 
-    img = Image.open(path).convert("RGBA")
+    try:
+        img = Image.open(path).convert("RGBA")
+    except UnidentifiedImageError:
+        print(f"skip non-image data: {rel_path}")
+        return
+
     for rect in rects:
         img = redact_region(img, rect)
     img.convert("RGB").save(path, format="PNG", optimize=True)
@@ -180,8 +207,22 @@ def sync_docs_assets() -> None:
 
 
 def main() -> None:
+    processed: set[str] = set()
     for rel_path, rects in TARGETS.items():
         sanitize_file(rel_path, rects)
+        processed.add(rel_path)
+
+    # Apply default masks to remaining images in key screenshot directories.
+    for glob_pattern, default_rects in DIRECTORY_DEFAULTS:
+        for path in REPO_ROOT.glob(glob_pattern):
+            if not path.is_file():
+                continue
+            rel_path = path.relative_to(REPO_ROOT).as_posix()
+            if rel_path in processed:
+                continue
+            sanitize_file(rel_path, default_rects)
+            processed.add(rel_path)
+
     sync_docs_assets()
 
 
