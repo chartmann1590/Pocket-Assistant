@@ -1,0 +1,66 @@
+================================================================================
+GOOGLE PLAY CONSOLE — Pocket Assistant
+================================================================================
+Use this file as copy-paste source for the Play Console listing. Trim or expand
+to fit field limits shown below.
+
+--------------------------------------------------------------------------------
+App name (max 30 characters)
+--------------------------------------------------------------------------------
+Pocket Assistant
+
+--------------------------------------------------------------------------------
+Short description (max 80 characters)
+--------------------------------------------------------------------------------
+Local AI organizer: save bills & notes, chat, tasks, and reminders on-device.
+
+--------------------------------------------------------------------------------
+Full description (max 4000 characters)
+--------------------------------------------------------------------------------
+Pocket Assistant is your local AI organizer for the stuff that lands on your phone—receipts, bills, PDFs, screenshots, and pasted text. Capture content from the share sheet or add it in the app, get a clear summary and structured details, then act on it with tasks and reminders.
+
+WHAT YOU CAN DO
+
+• Import easily — Share text, images, or PDFs into the app, or add content from gallery, files, camera, scan, or handwriting.
+• Understand at a glance — On-device text recognition and AI extraction help surface summaries, dates, amounts, and key facts (quality depends on your chosen AI mode and model).
+• Stay on top of tasks — Turn extracted items into tasks you can track from the dedicated tasks view.
+• Never miss the important dates — Schedule reminders and optionally work with your calendar when you allow those permissions.
+• Chat with context — Talk to the assistant about what you’ve saved; it can propose actions like reminders with your confirmation.
+• Your choice of AI — Run locally with downloadable models when you want on-device processing, or connect to your own Ollama server when you prefer. Auto mode picks what’s available.
+• Dark and light themes — Comfortable reading day or night.
+
+PRIVACY & CONTROL
+
+Processing happens on your device when you use local models. Remote AI is only used when you configure it. You control notifications, calendar access, and what you import.
+
+Pocket Assistant is built for people who want their documents and notes organized without losing them in a chat thread or camera roll. Install it, share something in once, and see everything in one place.
+
+--------------------------------------------------------------------------------
+Suggested screenshot order (phone) — upload 2–8 images
+--------------------------------------------------------------------------------
+Generated under play-store/captioned/ (run py scripts/play-store/generate_assets.py):
+
+1) 01-reminders-from-chat — reminder proposal from natural language.
+2) 02-assistant-and-saved-items — chat plus Open Bill / source link.
+3) 03-instant-answers — direct answer on payment due dates from saved context.
+4) 04-review-before-save — tighter crop on reminder review / confirmation.
+5) 05-ask-in-your-words — header + conversation, natural phrasing and quick replies.
+6) 06-chat-history-context — Q&A crop emphasizing grounded answers.
+
+Still worth capturing from a release build: Home feed, Import options, Item detail,
+Tasks, Settings (AI mode). Do not use debug-only compatibility dialogs.
+
+--------------------------------------------------------------------------------
+Feature graphic (1024 x 500) — not included here
+--------------------------------------------------------------------------------
+Create in Figma or Canva: app name, tagline “Your local AI organizer”, and
+one strong visual (phone mockup or abstract). Play Console requires this for
+the store listing.
+
+--------------------------------------------------------------------------------
+Promo / marketing text (optional, if you use promo fields)
+--------------------------------------------------------------------------------
+Turn shares and scans into summaries, tasks, and reminders—with local or
+self-hosted AI you control.
+
+================================================================================

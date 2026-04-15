@@ -6,28 +6,36 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/screenshot_assistant.png</image:loc>
-      <image:title>Pocket Assistant — AI Assistant chat</image:title>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/00-main-home-screen.png</image:loc>
+      <image:title>Pocket Assistant — Main home screen</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/home.png</image:loc>
-      <image:title>Pocket Assistant — Home and recent items</image:title>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/01-reminders-from-chat.png</image:loc>
+      <image:title>Pocket Assistant — Turn chat into reminders</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/assistant.png</image:loc>
-      <image:title>Pocket Assistant — AI assistant</image:title>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/02-assistant-and-saved-items.png</image:loc>
+      <image:title>Pocket Assistant — Assistant and saved items</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/chat.png</image:loc>
-      <image:title>Pocket Assistant — Chat with context</image:title>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/03-instant-answers.png</image:loc>
+      <image:title>Pocket Assistant — Instant answers</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/tasks.png</image:loc>
-      <image:title>Pocket Assistant — Tasks and due dates</image:title>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/04-review-before-save.png</image:loc>
+      <image:title>Pocket Assistant — Review before save</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/images/settings.png</image:loc>
-      <image:title>Pocket Assistant — AI and model settings</image:title>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/05-ask-in-your-words.png</image:loc>
+      <image:title>Pocket Assistant — Ask in your own words</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/06-chat-history-context.png</image:loc>
+      <image:title>Pocket Assistant — Chat history context</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://chartmann1590.github.io/Pocket-Assistant/assets/screenshots/07-model-picker-overview.png</image:loc>
+      <image:title>Pocket Assistant — Model picker overview</image:title>
     </image:image>
   </url>
   <url>

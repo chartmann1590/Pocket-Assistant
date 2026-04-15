@@ -11,17 +11,18 @@
 After the first workflow run, enable **Settings → Pages → Build and deployment → GitHub Actions** if the site is not live yet.
 
 <p align="center">
-  <a href="https://youtu.be/OrtOvMgKmwM">
-    <img src="https://img.youtube.com/vi/OrtOvMgKmwM/maxresdefault.jpg" alt="Pocket Assistant demo video" width="600">
+  <a href="play-store/demo-video/foreground_service_demo.mp4">
+    <img src="play-store/demo-video/frames/frame_001.png" alt="Pocket Assistant demo video" width="600">
   </a>
   <br>
-  <em>Watch the demo on YouTube</em>
+  <em>Watch the sanitized local demo</em>
 </p>
 
 <p align="center">
-  <img src="screenshots/device/screen.png" alt="Home screen" width="230">&nbsp;&nbsp;
-  <img src="screenshots/device/detail3.png" alt="Tasks" width="230">&nbsp;&nbsp;
-  <img src="screenshot_assistant.png" alt="AI Assistant" width="230">
+  <img src="play-store/captioned/00-main-home-screen.png" alt="Main home screen" width="230">&nbsp;&nbsp;
+  <img src="play-store/captioned/07-model-picker-overview.png" alt="Model picker overview" width="230">&nbsp;&nbsp;
+  <img src="play-store/captioned/01-reminders-from-chat.png" alt="Turn chat into reminders" width="230">&nbsp;&nbsp;
+  <img src="play-store/captioned/02-assistant-and-saved-items.png" alt="Assistant and saved items" width="230">
 </p>
 
 ## Features
@@ -37,9 +38,10 @@ After the first workflow run, enable **Settings → Pages → Build and deployme
 - **Privacy by design** — no cloud backend, no telemetry; everything runs offline
 
 <p align="center">
-  <img src="screenshots/automation/pocket_assistant_screen.png" alt="Item categories" width="230">&nbsp;&nbsp;
-  <img src="screenshots/automation/pocket_settings2.png" alt="AI settings" width="230">&nbsp;&nbsp;
-  <img src="screenshots/automation/assistant_screen.png" alt="Assistant" width="230">
+  <img src="play-store/captioned/03-instant-answers.png" alt="Instant answers" width="230">&nbsp;&nbsp;
+  <img src="play-store/captioned/04-review-before-save.png" alt="Review before save" width="230">&nbsp;&nbsp;
+  <img src="play-store/captioned/05-ask-in-your-words.png" alt="Ask in your own words" width="230">&nbsp;&nbsp;
+  <img src="play-store/captioned/06-chat-history-context.png" alt="Chat history context" width="230">
 </p>
 
 ## Requirements

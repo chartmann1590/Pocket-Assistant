@@ -1,0 +1,15 @@
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_000.png'
+duration 4
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_001.png'
+duration 5
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_002.png'
+duration 5
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_003.png'
+duration 6
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_004.png'
+duration 7
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_005.png'
+duration 5
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_999.png'
+duration 5
+file 'H:/Pocket-Assistant/play-store/demo-video/frames/frame_999.png'
