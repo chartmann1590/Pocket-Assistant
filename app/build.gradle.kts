@@ -27,6 +27,9 @@ if (keystoreFile.exists()) {
     keystoreFile.inputStream().use { keystoreProps.load(it) }
 }
 
+val ciVersionCode = System.getenv("ANDROID_VERSION_CODE")?.toIntOrNull() ?: 1
+val ciVersionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.0.0"
+
 android {
     namespace = "com.charles.pocketassistant"
     compileSdk = 36
@@ -35,8 +38,8 @@ android {
         applicationId = "com.charles.pocketassistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = ciVersionCode
+        versionName = ciVersionName
 
         testInstrumentationRunner = "com.charles.pocketassistant.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
