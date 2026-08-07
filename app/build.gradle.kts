@@ -165,6 +165,7 @@ dependencies {
     implementation(libs.mediapipe.tasks.text)
     implementation(libs.google.aicore)
     implementation(libs.google.gms.ads)
+    implementation(libs.play.review.ktx)
     implementation(files("libs/litertlm-android-0.8.0-classes.jar"))
 
     testImplementation(libs.junit)

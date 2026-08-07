@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.charles.pocketassistant.ads.AdManager
 import com.charles.pocketassistant.ads.BannerAd
+import com.charles.pocketassistant.review.ReviewPrompter
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
@@ -52,6 +53,7 @@ fun AppNav(
         activity?.let { adManager.showInterstitial(it) }
         nav.navigate("detail/$itemId")
         importViewModel.consumeCompletedItemNavigation()
+        activity?.let { ReviewPrompter.maybeRequestReview(it) }
     }
 
     Column(modifier = Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {

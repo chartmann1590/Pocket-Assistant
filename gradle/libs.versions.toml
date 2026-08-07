@@ -29,6 +29,7 @@ mlkitDocScanner = "16.0.0-beta1"
 mediapipeText = "0.10.21"
 aicore = "0.0.1-exp02"
 gmsAds = "23.6.0"
+playReview = "2.0.2"
 coroutines = "1.8.1"
 ksp = "1.9.24-1.0.20"
 litertlm = "0.8.0"
@@ -84,6 +85,7 @@ mediapipe-tasks-text = { group = "com.google.mediapipe", name = "tasks-text", ve
 google-aicore = { group = "com.google.ai.edge.aicore", name = "aicore", version.ref = "aicore" }
 google-litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }
 google-gms-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "gmsAds" }
+play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "playReview" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 
