@@ -29,6 +29,7 @@ import com.charles.pocketassistant.ui.importing.ImportScreen
 import com.charles.pocketassistant.ui.onboarding.OnboardingScreen
 import com.charles.pocketassistant.ui.handwriting.HandwritingScreen
 import com.charles.pocketassistant.ui.rewards.RewardsScreen
+import com.charles.pocketassistant.ui.moreapps.MoreAppsScreen
 import com.charles.pocketassistant.ui.settings.SettingsScreen
 import com.charles.pocketassistant.ui.tasks.TasksScreen
 
@@ -73,6 +74,7 @@ fun AppNav(
         composable("assistant") { AssistantScreen(nav) }
         composable("tasks") { TasksScreen(nav) }
         composable("settings") { SettingsScreen(nav) }
+        composable("more_apps") { MoreAppsScreen(nav) }
         composable("rewards") { RewardsScreen(nav) }
         composable("handwriting") {
             HandwritingScreen(

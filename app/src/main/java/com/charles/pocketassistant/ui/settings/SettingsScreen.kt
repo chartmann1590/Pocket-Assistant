@@ -456,6 +456,22 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
                 }
             }
 
+            SettingsSection(
+                icon = Icons.Outlined.Language,
+                title = "More Apps",
+                iconTint = MaterialTheme.colorScheme.primary
+            ) {
+                OutlinedButton(
+                    onClick = { nav.navigate("more_apps") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("More apps from this developer")
+                }
+            }
+
             Spacer(Modifier.size(16.dp))
         }
     }
