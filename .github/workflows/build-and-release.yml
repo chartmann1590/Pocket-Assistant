@@ -74,6 +74,8 @@ jobs:
 
   deploy-pages:
     needs: build-and-release
+    # The github-pages environment only accepts deployments from the default branch.
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
