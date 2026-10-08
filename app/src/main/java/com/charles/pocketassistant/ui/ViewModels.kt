@@ -1927,14 +1927,14 @@ class HandwritingViewModel @Inject constructor(
     private val _state = MutableStateFlow(HandwritingUiState())
     val state: StateFlow<HandwritingUiState> = _state
 
-    private val collectedStrokes = mutableListOf<com.google.mlkit.vision.digitalink.Ink.Stroke>()
+    private val collectedStrokes = mutableListOf<com.google.mlkit.vision.digitalink.recognition.Ink.Stroke>()
 
     fun addStroke(points: List<androidx.compose.ui.geometry.Offset>) {
-        val strokeBuilder = com.google.mlkit.vision.digitalink.Ink.Stroke.builder()
+        val strokeBuilder = com.google.mlkit.vision.digitalink.recognition.Ink.Stroke.builder()
         val baseTime = System.currentTimeMillis()
         for ((i, point) in points.withIndex()) {
             strokeBuilder.addPoint(
-                com.google.mlkit.vision.digitalink.Ink.Point.create(
+                com.google.mlkit.vision.digitalink.recognition.Ink.Point.create(
                     point.x, point.y, baseTime + i
                 )
             )
@@ -1952,7 +1952,7 @@ class HandwritingViewModel @Inject constructor(
         _state.value = _state.value.copy(recognizing = true, error = "")
         viewModelScope.launch {
             runCatching {
-                val inkBuilder = com.google.mlkit.vision.digitalink.Ink.builder()
+                val inkBuilder = com.google.mlkit.vision.digitalink.recognition.Ink.builder()
                 for (stroke in collectedStrokes) inkBuilder.addStroke(stroke)
                 digitalInkEngine.recognize(inkBuilder.build())
             }.onSuccess { text ->
