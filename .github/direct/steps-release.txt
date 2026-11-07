@@ -1,0 +1,43 @@
+launch
+wait 15
+shot 01-launch
+sh for i in 1 2 3; do if dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q AdActivity; then sleep 7; input keyevent 4; sleep 2; fi; done
+tap (?i)^use both$
+wait 3
+scrollto (?i)^add demo items$
+wait 4
+scrollto (?i)^set up local ai later$
+wait 6
+sh for i in 1 2 3; do if dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q AdActivity; then sleep 7; input keyevent 4; sleep 2; fi; done
+shot 02-home
+swipeup
+shot 03-home-scrolled
+swipedown
+tap (?i)^tasks$
+wait 4
+sh for i in 1 2 3; do if dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q AdActivity; then sleep 7; input keyevent 4; sleep 2; fi; done
+shot 04-tasks
+back
+wait 2
+tap (?i)^assistant$
+wait 4
+sh for i in 1 2 3; do if dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q AdActivity; then sleep 7; input keyevent 4; sleep 2; fi; done
+shot 05-assistant
+back
+wait 2
+tap (?i)^rewards$
+wait 4
+sh for i in 1 2 3; do if dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q AdActivity; then sleep 7; input keyevent 4; sleep 2; fi; done
+shot 06-rewards
+back
+wait 2
+tap (?i)^settings$
+wait 4
+sh for i in 1 2 3; do if dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q AdActivity; then sleep 7; input keyevent 4; sleep 2; fi; done
+shot 07-settings
+scrollto (?i)more apps from this developer
+wait 4
+shot 08-more-apps
+back
+wait 2
+shot 09-back
