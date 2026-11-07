@@ -99,7 +99,7 @@ fun MoreAppsScreen(nav: NavHostController) {
                         )
                         Spacer(Modifier.height(6.dp))
                         OutlinedButton(
-                            onClick = { uriHandler.openUri("https://play.google.com/store/apps/details?id=${app.packageName}") },
+                            onClick = { uriHandler.openUri((if (com.charles.pocketassistant.BuildConfig.STORE == "amazon") "https://www.amazon.com/gp/mas/dl/android?p=${app.packageName}" else "https://play.google.com/store/apps/details?id=${app.packageName}")) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                         ) {
