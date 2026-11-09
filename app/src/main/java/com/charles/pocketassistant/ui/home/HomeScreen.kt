@@ -110,7 +110,8 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    if (com.charles.pocketassistant.BuildConfig.ADS_ENABLED) {
+                    // Amazon build: no rewarded-ad Rewards screen (Google rewarded ads can't load on Fire).
+                    if (com.charles.pocketassistant.BuildConfig.ADS_ENABLED && com.charles.pocketassistant.BuildConfig.STORE != "amazon") {
                         IconButton(onClick = { nav.navigate("rewards") }) {
                             Icon(Icons.Outlined.Star, contentDescription = "Rewards")
                         }

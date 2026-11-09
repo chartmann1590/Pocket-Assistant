@@ -384,8 +384,8 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
                 PrivacyItem("Data stays local unless you choose Ollama")
             }
 
-            // Updates
-            SettingsSection(
+            // Updates (not in the Amazon build: the Appstore updates the app; no GitHub downloads)
+            if (com.charles.pocketassistant.BuildConfig.STORE != "amazon") SettingsSection(
                 icon = Icons.Outlined.SystemUpdate,
                 title = "Updates",
                 iconTint = MaterialTheme.colorScheme.primary
@@ -445,7 +445,8 @@ fun SettingsScreen(nav: NavHostController, vm: SettingsViewModel = hiltViewModel
                     Spacer(Modifier.width(6.dp))
                     Text("GitHub Repository")
                 }
-                FilledTonalButton(
+                // Amazon build: no outside-payment (donation) link (Amazon monetization policy)
+                if (com.charles.pocketassistant.BuildConfig.STORE != "amazon") FilledTonalButton(
                     onClick = { showSponsorModal = true },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
