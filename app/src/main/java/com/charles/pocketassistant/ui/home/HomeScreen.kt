@@ -147,7 +147,7 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            updateAvailable?.let { available ->
+            updateAvailable?.takeIf { com.charles.pocketassistant.BuildConfig.STORE != "amazon" }?.let { available -> // Amazon build: no GitHub update banner
                 item {
                     UpdateBanner(
                         release = available.release,
